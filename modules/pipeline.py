@@ -44,7 +44,7 @@ class WomenDistressPipeline:
                 if os.path.exists(final_output):
                     os.remove(final_output)
                 cmd = [
-                    "/opt/homebrew/bin/ffmpeg",
+                    "ffmpeg",
                     "-y",
                     "-i", video_path,
                     "-vcodec", "libx264",

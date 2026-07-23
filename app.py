@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -7,10 +8,23 @@ from routes.emergency import router as emergency_router
 
 app = FastAPI(title="Women Distress AI")
 
-# Configure CORS middleware
+# ─── CORS ─────────────────────────────────────────────────────────────────────
+# Default origins for local development.
+# For production, set ALLOWED_ORIGINS environment variable as a
+# comma-separated list of allowed frontend URLs:
+#   ALLOWED_ORIGINS=https://your-app.vercel.app,https://your-custom-domain.com
+# ──────────────────────────────────────────────────────────────────────────────
+_default_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+_env_origins = os.getenv("ALLOWED_ORIGINS", "")
+_extra_origins = [o.strip() for o in _env_origins.split(",") if o.strip()]
+ALLOWED_ORIGINS = _default_origins + _extra_origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
