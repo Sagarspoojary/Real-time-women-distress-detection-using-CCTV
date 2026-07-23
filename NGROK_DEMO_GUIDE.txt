@@ -1,0 +1,211 @@
+================================================================================
+        NGROK DEMO GUIDE — Women Distress AI
+        Complete Step-by-Step: Run your project publicly for FREE
+================================================================================
+
+WHAT YOU NEED
+─────────────
+  ✓ Your Mac (must stay on while sharing)
+  ✓ Your project running locally
+  ✓ ngrok account (free — takes 1 minute to sign up)
+  ✓ 4 Terminal windows open
+
+================================================================================
+STEP 1 — Create FREE ngrok Account (do this once)
+================================================================================
+
+1. Open browser → go to: https://ngrok.com
+2. Click "Sign Up" (top right)
+3. Sign up with Google or email — it's completely free
+4. After login, go to: https://dashboard.ngrok.com/get-started/your-authtoken
+5. Copy your authtoken — looks like:
+       2abc123XYZ_AbCdEfGhIjKlMnOpQrStUvWxYz
+
+================================================================================
+STEP 2 — Connect ngrok to your Account (do this once)
+================================================================================
+
+Run this in Terminal:
+
+    ngrok config add-authtoken YOUR_TOKEN_HERE
+
+Replace YOUR_TOKEN_HERE with the token you copied from the dashboard.
+You only ever need to do this once on your Mac.
+
+================================================================================
+STEP 3 — Start the Backend (Terminal 1)
+================================================================================
+
+Open Terminal 1 and run:
+
+    cd /Users/sagars/Documents/Women_Distress_AI
+    source venv/bin/activate
+    uvicorn app:app --reload
+
+Wait until you see:
+    INFO:     Application startup complete.
+    INFO:     Uvicorn running on http://127.0.0.1:8000
+
+KEEP THIS TERMINAL OPEN — do not close it.
+
+================================================================================
+STEP 4 — Start ngrok Tunnel (Terminal 2)
+================================================================================
+
+Open Terminal 2 and run:
+
+    ngrok http 8000
+
+You will see something like this:
+
+    ┌──────────────────────────────────────────────────────┐
+    │                     ngrok                            │
+    │                                                      │
+    │  Session Status   online                             │
+    │  Account          Sagar (Plan: Free)                 │
+    │  Version          3.x.x                              │
+    │  Region           India (in)                         │
+    │  Forwarding       https://abc123.ngrok-free.app      │
+    │                                ↑                     │
+    │                        COPY THIS URL                 │
+    └──────────────────────────────────────────────────────┘
+
+COPY the https URL — example:  https://abc123.ngrok-free.app
+This is your public backend URL.
+
+KEEP THIS TERMINAL OPEN — do not close it.
+
+================================================================================
+STEP 5 — Update Frontend to use ngrok URL (Terminal 3)
+================================================================================
+
+Open Terminal 3 and run:
+
+    cd /Users/sagars/Documents/Women_Distress_AI/frontend
+
+Open the file:  frontend/.env
+Change VITE_API_URL to your ngrok URL:
+
+    BEFORE:  VITE_API_URL=http://localhost:8000
+    AFTER:   VITE_API_URL=https://abc123.ngrok-free.app
+
+Save the file.
+
+NOTE: Replace abc123.ngrok-free.app with YOUR actual ngrok URL.
+      The URL changes every time you restart ngrok (free plan).
+
+================================================================================
+STEP 6 — Start the Frontend (Terminal 3)
+================================================================================
+
+In the same Terminal 3:
+
+    npm run dev
+
+Wait until you see:
+    VITE v5.x.x  ready in 300 ms
+    ➜  Local:   http://localhost:5173/
+
+================================================================================
+STEP 7 — Share with Anyone!
+================================================================================
+
+You now have TWO URLs:
+
+  Your frontend (local): http://localhost:5173/
+  Your backend (public): https://abc123.ngrok-free.app
+
+For your DEMO:
+  → YOU use:       http://localhost:5173/
+  → JUDGES use:    http://localhost:5173/  (if on same WiFi)
+               OR  Share your screen / laptop directly
+
+The ngrok URL is what makes the API work from anywhere.
+
+To share the FRONTEND publicly too — open Terminal 4 and run:
+
+    ngrok http 5173
+
+This gives you a second URL like: https://xyz789.ngrok-free.app
+Anyone on any device/network can open this and use your full system!
+
+================================================================================
+EVERY TIME YOU DEMO (Quick Start)
+================================================================================
+
+You need to do this EVERY TIME you want to demo:
+
+  1. Terminal 1: cd ~/Documents/Women_Distress_AI
+                 source venv/bin/activate
+                 uvicorn app:app --reload
+
+  2. Terminal 2: ngrok http 8000
+                 → Copy the https URL
+
+  3. Edit frontend/.env:
+                 VITE_API_URL=https://NEW-URL.ngrok-free.app
+
+  4. Terminal 3: cd ~/Documents/Women_Distress_AI/frontend
+                 npm run dev
+
+  5. OPTIONAL Terminal 4: ngrok http 5173
+                           → Share this URL with anyone
+
+Total time: about 2-3 minutes
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+PROBLEM: ngrok shows "ERR_NGROK_108" or "session limit exceeded"
+FIX:     Free plan allows 1 tunnel at a time.
+         Close any other ngrok windows first.
+         Or upgrade to ngrok free account (allows 2 tunnels).
+
+PROBLEM: Browser shows "ngrok - ERR_NGROK_6024" warning page
+FIX:     This is ngrok's warning for visitors.
+         Click "Visit Site" to proceed.
+         To remove it: log in at ngrok.com, go to your dashboard.
+
+PROBLEM: API calls fail (network error in frontend)
+FIX:     Make sure VITE_API_URL in frontend/.env matches your ngrok URL exactly.
+         Restart npm run dev after changing .env.
+
+PROBLEM: Models take long to load on first request
+FIX:     This is normal! VideoMAE needs ~30-60 seconds to load.
+         After that, all subsequent requests are fast.
+         TIP: Send one test video BEFORE the demo to warm up the models.
+
+PROBLEM: ngrok URL changed
+FIX:     Free plan gives a new URL every time you restart ngrok.
+         Update VITE_API_URL in frontend/.env and restart npm run dev.
+
+================================================================================
+PRO TIPS FOR YOUR PRESENTATION
+================================================================================
+
+  1. WARM UP before demo:
+     Start everything 10 minutes before your presentation.
+     Upload one test video to load all AI models into memory.
+     After that, the pipeline runs much faster.
+
+  2. Use a short video (15-30 seconds):
+     Shorter videos process faster — better for live demo.
+     Processing time: ~15-30 sec per minute of video.
+
+  3. Keep laptop plugged in:
+     AI models use significant CPU/GPU. Keep charger connected.
+
+  4. Use hotspot instead of college WiFi:
+     College networks sometimes block ngrok tunnels.
+     Use your phone's hotspot as a backup plan.
+
+  5. Have demo videos ready:
+     Pre-load your best test videos in the upload panel.
+     Know in advance which one triggers the female distress alert.
+
+  6. ngrok free plan URL warning:
+     If judges see a warning page on the ngrok URL, just click
+     "Visit Site" to proceed. This is just ngrok's safety notice.
+
+================================================================================
