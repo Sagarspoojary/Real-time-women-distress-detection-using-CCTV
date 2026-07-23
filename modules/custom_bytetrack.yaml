@@ -1,0 +1,8 @@
+# Custom ByteTrack tracker configuration
+tracker_type: bytetrack
+track_high_thresh: 0.50 # Raise first-stage threshold to only spawn trackers on reliable detections
+track_low_thresh: 0.10 # Maintain low-stage threshold to recover tracks on occlusion/blur
+new_track_thresh: 0.60 # Minimum score to initialize a brand new track, reducing false positive tracks
+track_buffer: 60       # Frames to keep lost tracks alive; higher values help during occlusions
+match_thresh: 0.8      # IoU association threshold
+fuse_score: True       # Fuse score with motion/IoU for matching

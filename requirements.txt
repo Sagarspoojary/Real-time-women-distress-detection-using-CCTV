@@ -1,0 +1,29 @@
+# ─── Backend ────────────────────────────────────────────────────────────────
+fastapi==0.139.2
+uvicorn==0.51.0
+python-multipart==0.0.32
+pydantic==2.13.4
+
+# ─── PyTorch ────────────────────────────────────────────────────────────────
+torch==2.13.0
+torchvision==0.28.0
+torchaudio==2.11.0
+
+# ─── Computer Vision / AI ───────────────────────────────────────────────────
+timm==1.0.28
+transformers==4.46.3
+ultralytics==8.4.99
+opencv-python==5.0.0.93
+pillow==12.3.0
+numpy==2.5.1
+
+# ─── Tracking ───────────────────────────────────────────────────────────────
+# ByteTrack is bundled with ultralytics — no separate install required
+
+# ─── Email ──────────────────────────────────────────────────────────────────
+# Standard library smtplib is used — no extra dependency needed
+
+# ─── Face Recognition ───────────────────────────────────────────────────────
+# face_recognition / deepface — install separately if enabled:
+# pip install face-recognition
+# or: pip install deepface
