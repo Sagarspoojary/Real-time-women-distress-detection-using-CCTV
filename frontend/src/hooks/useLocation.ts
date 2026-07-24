@@ -97,21 +97,21 @@ export function useLocation() {
       }));
     };
 
-    // Immediate location fetch on mount
+    // Immediate fresh location fetch on mount with high accuracy GPS force
     navigator.geolocation.getCurrentPosition(
       handleSuccess,
       (err) => console.warn("[useLocation] getCurrentPosition fallback error:", err.message),
-      { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
 
-    // Start live tracking using watchPosition()
+    // Start live tracking using watchPosition() with high accuracy GPS
     watchIdRef.current = navigator.geolocation.watchPosition(
       handleSuccess,
       handleError,
       {
         enableHighAccuracy: true,
         timeout: 15000,
-        maximumAge: 10000,
+        maximumAge: 0,
       }
     );
 
