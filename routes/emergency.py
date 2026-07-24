@@ -122,6 +122,10 @@ Please verify the situation immediately.
             except Exception as e:
                 logger.warning(f"Could not extract snapshot from debug video: {e}")
 
+        from services.location_service import LocationService
+        loc_service = LocationService()
+        current_loc = loc_service.get_location()
+
         alert_info = {
             "track_id": track_id,
             "gender": "Female",
@@ -132,6 +136,7 @@ Please verify the situation immediately.
             "recognized_name": recognized_person,
             "weapon_detected": target_person.get("weapon_detected", False),
             "recipients": valid_recipients,
+            "location": current_loc,
         }
 
         success = send_alert_email(alert_info, snapshot_bytes=snapshot_bytes, clip_path=clip_path)

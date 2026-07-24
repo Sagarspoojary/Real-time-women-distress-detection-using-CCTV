@@ -37,6 +37,17 @@ logger = logging.getLogger("alerts.email")
 def _build_plain_body(alert_info: dict) -> str:
     """Build plain-text version of the alert email."""
     now = datetime.now()
+    location = alert_info.get("location", {})
+    
+    if location and location.get("status") == "available":
+        loc_str = f"""Latitude:             {location.get('latitude')}
+Longitude:            {location.get('longitude')}
+Accuracy:             {location.get('accuracy', 'N/A')} meters
+Location Timestamp:   {location.get('timestamp', 'N/A')}
+Google Maps Link:     {location.get('maps_link')}"""
+    else:
+        loc_str = "Location:             Location unavailable"
+
     return f"""
 ╔══════════════════════════════════════════════╗
 ║       WOMEN DISTRESS AI — EMERGENCY ALERT    ║
@@ -60,6 +71,12 @@ Distress Confidence:  {alert_info.get('distress_confidence', 0.0):.2%}
 Alert Level:          HIGH ⚠️
 Recognized Person:    {alert_info.get('recognized_name', 'Unknown')}
 Weapon Detected:      {'YES ⚠️' if alert_info.get('weapon_detected') else 'No'}
+
+────────────────────────────────────────────────
+GEOLOCATION & LIVE GPS
+────────────────────────────────────────────────
+
+{loc_str}
 
 ────────────────────────────────────────────────
 SYSTEM INFO
@@ -87,6 +104,34 @@ def _build_html_body(alert_info: dict) -> str:
         if alert_info.get('weapon_detected')
         else '<span style="background:#38a169;color:white;padding:2px 8px;border-radius:4px;">No</span>'
     )
+    
+    location = alert_info.get("location", {})
+    if location and location.get("status") == "available":
+        lat = location.get("latitude")
+        lng = location.get("longitude")
+        acc = location.get("accuracy", "N/A")
+        ts = location.get("timestamp", "N/A")
+        link = location.get("maps_link")
+        
+        loc_html = f"""
+      <p class="section-title">📍 Live GPS Geolocation</p>
+      <div class="row"><span class="label">Latitude</span><span class="value">{lat}</span></div>
+      <div class="row"><span class="label">Longitude</span><span class="value">{lng}</span></div>
+      <div class="row"><span class="label">GPS Accuracy</span><span class="value">{acc} meters</span></div>
+      <div class="row"><span class="label">GPS Timestamp</span><span class="value">{ts}</span></div>
+      <div style="text-align: center; margin-top: 15px;">
+        <a href="{link}" target="_blank" style="background: #3182ce; color: white; padding: 10px 18px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 13px; display: inline-block;">
+          🗺️ Open Incident Location in Google Maps
+        </a>
+      </div>
+      <p style="text-align: center; font-size: 11px; color: #a0aec0; margin-top: 6px;">{link}</p>
+        """
+    else:
+        loc_html = """
+      <p class="section-title">📍 Live GPS Geolocation</p>
+      <div class="row"><span class="label">Location</span><span class="value" style="color: #e53e3e;">Location unavailable</span></div>
+        """
+
     return f"""
 <!DOCTYPE html>
 <html>
@@ -128,6 +173,8 @@ def _build_html_body(alert_info: dict) -> str:
       <div class="row"><span class="label">Distress Confidence</span><span class="value">{alert_info.get('distress_confidence', 0.0):.2%}</span></div>
       <div class="row"><span class="label">Weapon Detected</span><span class="value">{weapon_badge}</span></div>
       <div class="row"><span class="label">Alert Level</span><span class="value"><span class="alert-level">HIGH</span></span></div>
+
+      {loc_html}
 
       <br>
       <p style="color:#fc8181;font-size:13px;text-align:center;">

@@ -95,6 +95,10 @@ class AlertDispatcher:
         self._cooldown.mark_sent(track_id)
 
         # ── Build alert metadata ───────────────────────────────────────────────
+        from services.location_service import LocationService
+        loc_service = LocationService()
+        current_loc = loc_service.get_location()
+
         video_name = os.path.basename(video_path) if video_path else "Unknown"
         alert_info = {
             "track_id":             track_id,
@@ -106,6 +110,7 @@ class AlertDispatcher:
             "recognized_name":      recognized_name,
             "weapon_detected":      weapon_detected,
             "recipients":           RECIPIENTS,
+            "location":             current_loc,
         }
 
         # ── Capture snapshot NOW (must happen in this thread, frame may not ─────
