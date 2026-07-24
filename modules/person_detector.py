@@ -5,6 +5,7 @@ from ultralytics import YOLO
 from modules.weapon_detector import WeaponDetector
 from modules.face_recognizer import FaceRecognizer
 from modules.gender_classifier import GenderClassifier, CACHE_THRESHOLD as GENDER_CACHE_THRESHOLD
+from alerts.smtp_config import ALERT_DISTRESS_CLASSES
 
 class PersonDetector:
 
@@ -114,14 +115,14 @@ class PersonDetector:
             )
 
 
-    def detect(self, video_path, person_manager):
+    def detect(self, video_path, person_manager, dispatcher=None, distress_type="Unknown", distress_confidence=0.0):
 
         os.makedirs("outputs", exist_ok=True)
 
         cap = cv2.VideoCapture(video_path)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = cap.get(cv2.CAP_PROP_FPS)
+        fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
         cap.release()
 
         writer = cv2.VideoWriter(
@@ -257,6 +258,28 @@ class PersonDetector:
                         gender_confidence=round(gender_conf, 3)
                     )
 
+                    # ── Real-time distress alert ──────────────────────────────
+                    # Fire immediately when Female + known distress class confirmed.
+                    # dispatcher.dispatch() returns instantly — email sends in background.
+                    if (
+                        dispatcher is not None
+                        and gender_val == "Female"
+                        and distress_type in ALERT_DISTRESS_CLASSES
+                    ):
+                        dispatcher.dispatch(
+                            track_id=track_id,
+                            gender=gender_val,
+                            distress_type=distress_type,
+                            distress_confidence=distress_confidence,
+                            detection_confidence=round(confidence, 3),
+                            video_path=video_path,
+                            detection_frame=frame_number,
+                            fps=fps,
+                            snapshot_frame=frame.copy(),   # copy before next frame overwrites
+                            recognized_name=face_name,
+                            weapon_detected=weapon_detected,
+                        )
+
                     # Update weapon information on the Person tracker
                     person = person_manager.people.get(track_id)
                     if person is not None:
@@ -350,7 +373,7 @@ class PersonDetector:
         if os.path.exists(final_output):
             os.rename(final_output, temp_output)
             cmd = [
-                "/opt/homebrew/bin/ffmpeg",
+                "ffmpeg",
                 "-y",
                 "-i", temp_output,
                 "-vcodec", "libx264",

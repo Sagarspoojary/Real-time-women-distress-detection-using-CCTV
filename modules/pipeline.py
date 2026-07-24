@@ -3,6 +3,7 @@ from modules.distress_detector import DistressDetector
 from modules.person_detector import PersonDetector
 from modules.person_manager import PersonManager
 from modules.track_validator import TrackValidator
+from alerts.alert_dispatcher import AlertDispatcher
 
 class WomenDistressPipeline:
 
@@ -14,6 +15,11 @@ class WomenDistressPipeline:
 
         self.person_manager = PersonManager()
         self.validator = TrackValidator()
+
+        # Alert dispatcher — one instance, shared across all requests.
+        # Cooldown state is maintained per track_id across the lifetime of the server.
+        self.dispatcher = AlertDispatcher()
+
     def process(self, video_path):
 
         result = {
@@ -64,21 +70,35 @@ class WomenDistressPipeline:
 
         result["model2"] = model2
 
+        # Extract distress info to pass into the frame-by-frame loop
+        distress_type       = model2.get("prediction", "Unknown")
+        distress_confidence = model2.get("confidence", 0.0) / 100.0  # convert % → 0–1
+
         # =====================================================
         # MODEL 3 : Person Detection + Tracking
         # =====================================================
 
-        # Clear tracking for a new video
+        # Clear tracking state for the new video
         self.person_manager.clear()
 
-        # Process the complete video frame-by-frame
+        # Reset all alert cooldowns so each new video starts fresh
+        self.dispatcher.reset_all()
+
+        # Process the complete video frame-by-frame.
+        # Pass the dispatcher + distress context so real-time alerts can fire
+        # from inside the frame loop the moment Female + distress is confirmed.
         latest_frame = self.model3.detect(
             video_path,
-            self.person_manager
+            self.person_manager,
+            dispatcher=self.dispatcher,
+            distress_type=distress_type,
+            distress_confidence=distress_confidence,
         )
 
         # Remove stale tracks
-        self.person_manager.remove_stale(latest_frame)
+        stale_ids = self.person_manager.remove_stale(latest_frame)
+        for sid in stale_ids:
+            self.dispatcher.reset_track(sid)
 
         # Get all tracked people
         people = self.person_manager.get_all()
