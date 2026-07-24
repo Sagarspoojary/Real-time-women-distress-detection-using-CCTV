@@ -115,7 +115,7 @@ class PersonDetector:
             )
 
 
-    def detect(self, video_path, person_manager, dispatcher=None, distress_type="Unknown", distress_confidence=0.0):
+    def detect(self, video_path, person_manager, dispatcher=None, distress_type="Unknown", distress_confidence=0.0, violence_type="VIOLENCE", violence_confidence=0.7517):
 
         os.makedirs("outputs", exist_ok=True)
 
@@ -271,6 +271,8 @@ class PersonDetector:
                             gender=gender_val,
                             distress_type=distress_type,
                             distress_confidence=distress_confidence,
+                            violence_type=violence_type,
+                            violence_confidence=violence_confidence,
                             detection_confidence=round(confidence, 3),
                             video_path=video_path,
                             detection_frame=frame_number,

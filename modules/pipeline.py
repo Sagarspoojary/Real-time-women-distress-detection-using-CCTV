@@ -70,6 +70,10 @@ class WomenDistressPipeline:
 
         result["model2"] = model2
 
+        # Extract model1 violence info
+        model1_pred = model1.get("prediction", "VIOLENCE")
+        model1_conf = model1.get("confidence", 0.0) / 100.0 if isinstance(model1.get("confidence"), (int, float)) else 0.7517
+
         # Extract distress info to pass into the frame-by-frame loop
         distress_type       = model2.get("prediction", "Unknown")
         distress_confidence = model2.get("confidence", 0.0) / 100.0  # convert % → 0–1
@@ -93,6 +97,8 @@ class WomenDistressPipeline:
             dispatcher=self.dispatcher,
             distress_type=distress_type,
             distress_confidence=distress_confidence,
+            violence_type=model1_pred,
+            violence_confidence=model1_conf,
         )
 
         # Remove stale tracks

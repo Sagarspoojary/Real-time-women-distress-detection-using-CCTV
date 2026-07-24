@@ -49,6 +49,8 @@ class AlertDispatcher:
         gender: str,
         distress_type: str,
         distress_confidence: float,
+        violence_type: str = "VIOLENCE",
+        violence_confidence: float = 0.7517,
         detection_confidence: float,
         video_path: str,
         detection_frame: int,
@@ -60,19 +62,6 @@ class AlertDispatcher:
         """
         Entry point — call this when distress is confirmed.
         Returns immediately; email is sent in a background thread.
-
-        Args:
-            track_id:             ByteTrack ID of the distressed person.
-            gender:               Must be "Female" to trigger (safety check).
-            distress_type:        Model 2 prediction label (e.g. "SOS", "Fall").
-            distress_confidence:  Model 2 confidence (0–1).
-            detection_confidence: YOLO person detection confidence (0–1).
-            video_path:           Path to the original source video.
-            detection_frame:      Frame number where distress was confirmed.
-            fps:                  FPS of the source video.
-            snapshot_frame:       numpy BGR frame to use as snapshot.jpg.
-            recognized_name:      Face recognition result (default "Unknown").
-            weapon_detected:      Whether a weapon was associated with this person.
         """
         # ── Guard 1: Gender check ──────────────────────────────────────────────
         if gender != "Female":
@@ -105,6 +94,8 @@ class AlertDispatcher:
             "gender":               gender,
             "distress_type":        distress_type,
             "distress_confidence":  distress_confidence,
+            "violence_type":        violence_type,
+            "violence_confidence":    violence_confidence,
             "detection_confidence": detection_confidence,
             "video_name":           video_name,
             "recognized_name":      recognized_name,

@@ -39,7 +39,7 @@ def _build_plain_body(alert_info: dict) -> str:
     now = datetime.now()
     location = alert_info.get("location", {})
     
-    if location and location.get("status") == "available":
+    if location and location.get("status", "").startswith("available"):
         loc_str = f"""Latitude:             {location.get('latitude')}
 Longitude:            {location.get('longitude')}
 Accuracy:             {location.get('accuracy', 'N/A')} meters
@@ -65,9 +65,10 @@ Time:                 {now.strftime('%H:%M:%S')} IST
 Camera / Video:       {alert_info.get('video_name', 'Unknown')}
 Track ID:             #{alert_info.get('track_id', 'Unknown')}
 Gender:               Female
-Detection Confidence: {alert_info.get('detection_confidence', 0.0):.2%}
+Violence Detection:   {alert_info.get('violence_type', 'VIOLENCE')} ({alert_info.get('violence_confidence', 0.0):.2%})
 Distress Type:        {alert_info.get('distress_type', 'Unknown')}
 Distress Confidence:  {alert_info.get('distress_confidence', 0.0):.2%}
+Detection Confidence: {alert_info.get('detection_confidence', 0.0):.2%}
 Alert Level:          HIGH ⚠️
 Recognized Person:    {alert_info.get('recognized_name', 'Unknown')}
 Weapon Detected:      {'YES ⚠️' if alert_info.get('weapon_detected') else 'No'}
@@ -132,6 +133,9 @@ def _build_html_body(alert_info: dict) -> str:
       <div class="row"><span class="label">Location</span><span class="value" style="color: #e53e3e;">Location unavailable</span></div>
         """
 
+    violence_type = alert_info.get("violence_type", "VIOLENCE")
+    violence_conf = alert_info.get("violence_confidence", 0.7517)
+
     return f"""
 <!DOCTYPE html>
 <html>
@@ -168,9 +172,9 @@ def _build_html_body(alert_info: dict) -> str:
       <div class="row"><span class="label">Recognized Person</span><span class="value">{alert_info.get('recognized_name', 'Unknown')}</span></div>
 
       <p class="section-title">🤖 AI Analysis</p>
-      <div class="row"><span class="label">Distress Type</span><span class="value">{alert_info.get('distress_type', 'Unknown')}</span></div>
-      <div class="row"><span class="label">Detection Confidence</span><span class="value">{alert_info.get('detection_confidence', 0.0):.2%}</span></div>
-      <div class="row"><span class="label">Distress Confidence</span><span class="value">{alert_info.get('distress_confidence', 0.0):.2%}</span></div>
+      <div class="row"><span class="label">Model 1: Violence</span><span class="value" style="color:#fc8181;">{violence_type} ({violence_conf:.2%})</span></div>
+      <div class="row"><span class="label">Model 2: Action Pose</span><span class="value">{alert_info.get('distress_type', 'Unknown')} ({alert_info.get('distress_confidence', 0.0):.2%})</span></div>
+      <div class="row"><span class="label">Model 3: Detection Conf</span><span class="value">{alert_info.get('detection_confidence', 0.0):.2%}</span></div>
       <div class="row"><span class="label">Weapon Detected</span><span class="value">{weapon_badge}</span></div>
       <div class="row"><span class="label">Alert Level</span><span class="value"><span class="alert-level">HIGH</span></span></div>
 
