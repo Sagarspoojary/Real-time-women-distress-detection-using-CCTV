@@ -12,18 +12,45 @@ export interface LocationState {
 }
 
 export function useLocation() {
-  const [location, setLocation] = useState<LocationState>({
-    latitude: null,
-    longitude: null,
-    accuracy: null,
-    timestamp: null,
-    error: null,
-    permissionGranted: false,
+  const [location, setLocation] = useState<LocationState>(() => {
+    try {
+      const cached = localStorage.getItem("distress_ai_last_location");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        return {
+          latitude: parsed.latitude,
+          longitude: parsed.longitude,
+          accuracy: parsed.accuracy,
+          timestamp: parsed.timestamp,
+          error: null,
+          permissionGranted: true,
+        };
+      }
+    } catch (e) {
+      // ignore parsing error
+    }
+    return {
+      latitude: null,
+      longitude: null,
+      accuracy: null,
+      timestamp: null,
+      error: null,
+      permissionGranted: false,
+    };
   });
 
   const watchIdRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // If cached location exists, sync immediately to backend on mount
+    try {
+      const cached = localStorage.getItem("distress_ai_last_location");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        axios.post(`${API_BASE_URL}/api/v1/location`, parsed).catch(() => {});
+      }
+    } catch (e) {}
+
     if (!navigator.geolocation) {
       setLocation((prev) => ({
         ...prev,
@@ -36,23 +63,26 @@ export function useLocation() {
       const { latitude, longitude, accuracy } = position.coords;
       const timestamp = new Date(position.timestamp).toISOString();
 
-      setLocation({
+      const newLoc = {
         latitude,
         longitude,
         accuracy: Math.round(accuracy),
         timestamp,
+      };
+
+      try {
+        localStorage.setItem("distress_ai_last_location", JSON.stringify(newLoc));
+      } catch (e) {}
+
+      setLocation({
+        ...newLoc,
         error: null,
         permissionGranted: true,
       });
 
       // Automatically sync with FastAPI backend
       axios
-        .post(`${API_BASE_URL}/api/v1/location`, {
-          latitude,
-          longitude,
-          accuracy: Math.round(accuracy),
-          timestamp,
-        })
+        .post(`${API_BASE_URL}/api/v1/location`, newLoc)
         .catch((err) => {
           console.warn("[useLocation] Failed to sync location with backend:", err);
         });
