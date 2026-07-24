@@ -97,6 +97,13 @@ export function useLocation() {
       }));
     };
 
+    // Immediate location fetch on mount
+    navigator.geolocation.getCurrentPosition(
+      handleSuccess,
+      (err) => console.warn("[useLocation] getCurrentPosition fallback error:", err.message),
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: Infinity }
+    );
+
     // Start live tracking using watchPosition()
     watchIdRef.current = navigator.geolocation.watchPosition(
       handleSuccess,
