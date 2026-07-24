@@ -59,22 +59,10 @@ class FaceRecognizer:
             print(f"Thumbnail encoding failed: {e}")
             face_thumbnail = ""
 
-        # Heuristic matching mapping for Demonstration stability
-        video_name_lower = video_name.lower()
-        if "female" in video_name_lower or "distress" in video_name_lower or "fight" in video_name_lower:
-            recognized_name = "Jane Doe"
-            face_confidence = 0.94
-            face_status = "Known"
-            is_known_person = True
-        elif "male" in video_name_lower or "assault" in video_name_lower:
-            recognized_name = "John Doe"
-            face_confidence = 0.88
-            face_status = "Known"
-            is_known_person = True
-        else:
-            recognized_name = "Unknown"
-            face_confidence = 0.41
-            face_status = "Unknown"
-            is_known_person = False
+        # Face Recognition Result
+        recognized_name = "Unknown"
+        face_confidence = 0.0
+        face_status = "Unidentified"
+        is_known_person = False
 
         return recognized_name, face_confidence, face_status, face_thumbnail, is_known_person
