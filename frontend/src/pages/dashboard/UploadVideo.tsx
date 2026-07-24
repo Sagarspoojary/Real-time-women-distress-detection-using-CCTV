@@ -276,8 +276,13 @@ const UploadVideo: React.FC = () => {
           <h1 className="text-2xl font-bold text-white">Footage Analysis Terminal</h1>
           <p className="text-xs text-slate-400 mt-1">Upload video files for multi-stage anomaly detection scans.</p>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/40 border border-cyan-500/20 text-xs font-bold text-cyan-400 uppercase tracking-wider">
-          <FiCpu /> Core Node Online
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-950/40 border border-emerald-500/20 text-xs font-bold text-emerald-400 uppercase tracking-wider">
+            📍 GPS Active
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/40 border border-cyan-500/20 text-xs font-bold text-cyan-400 uppercase tracking-wider">
+            <FiCpu /> Core Node Online
+          </div>
         </div>
       </div>
 
