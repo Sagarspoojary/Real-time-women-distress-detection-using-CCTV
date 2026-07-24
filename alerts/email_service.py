@@ -214,18 +214,17 @@ def send_alert_email(
 
     # ── Send via SMTP ─────────────────────────────────────────────────────────
     try:
-        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15)
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=30) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
 
-        if SMTP_USER and SMTP_PASSWORD:
-            server.login(SMTP_USER, SMTP_PASSWORD)
-        else:
-            logger.warning("[Email] No SMTP credentials — attempting unauthenticated send.")
+            if SMTP_USER and SMTP_PASSWORD:
+                server.login(SMTP_USER, SMTP_PASSWORD)
+            else:
+                logger.warning("[Email] No SMTP credentials — attempting unauthenticated send.")
 
-        server.sendmail(SMTP_USER, recipients, msg.as_string())
-        server.quit()
+            server.sendmail(SMTP_USER, recipients, msg.as_string())
 
         logger.info(
             f"[Email] ✅ Alert sent successfully | "
@@ -248,4 +247,5 @@ def send_alert_email(
         return False
     except Exception as e:
         logger.error(f"[Email] ❌ Unexpected error sending alert: {e}")
+        return False
         return False
