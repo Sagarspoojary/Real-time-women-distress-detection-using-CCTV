@@ -6,6 +6,9 @@ const getApiBaseUrl = () => {
     return envUrl;
   }
   if (typeof window !== "undefined" && window.location) {
+    if (window.location.port === "5173") {
+      return "http://localhost:8000";
+    }
     return window.location.origin;
   }
   return "http://localhost:8000";
