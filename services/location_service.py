@@ -46,7 +46,7 @@ class LocationService:
             logger.warning(f"[LocationService] Could not save location cache: {e}")
 
     def update_location(self, latitude: float, longitude: float, accuracy: Optional[float] = None, timestamp: Optional[str] = None) -> Dict[str, Any]:
-        """Update stored coordinates."""
+        """Update stored coordinates from true Browser GPS."""
         with self._data_lock:
             maps_link = f"https://www.google.com/maps?q={latitude},{longitude}"
             self._location_data = {
@@ -55,10 +55,11 @@ class LocationService:
                 "accuracy": accuracy,
                 "timestamp": timestamp,
                 "maps_link": maps_link,
-                "status": "available"
+                "status": "available",
+                "is_gps": True
             }
             self._save_cache(self._location_data)
-            logger.info(f"[LocationService] Updated location: {latitude}, {longitude} (Accuracy: {accuracy}m)")
+            logger.info(f"[LocationService] Updated true GPS location: {latitude}, {longitude} (Accuracy: {accuracy}m)")
             return self._location_data
 
     def _fetch_ip_location(self) -> Optional[Dict[str, Any]]:
@@ -79,9 +80,10 @@ class LocationService:
                         "latitude": lat,
                         "longitude": lon,
                         "accuracy": 5000, # Approx IP accuracy ~5km
-                        "timestamp": "IP Location (Approx)",
+                        "timestamp": "Approximate IP Geolocation",
                         "maps_link": maps_link,
-                        "status": f"available (IP: {city}, {region}, {country})"
+                        "status": f"available (IP: {city}, {region})",
+                        "is_gps": False
                     }
                     logger.info(f"[LocationService] Fallback IP location obtained: {lat}, {lon} ({city})")
                     return loc_info
@@ -90,7 +92,7 @@ class LocationService:
         return None
 
     def get_location(self) -> Dict[str, Any]:
-        """Get latest stored location or fallback status."""
+        """Get latest stored location or fallback status. Always prefers true GPS if present."""
         with self._data_lock:
             if self._location_data:
                 return dict(self._location_data)
@@ -106,7 +108,8 @@ class LocationService:
                 "accuracy": None,
                 "timestamp": None,
                 "maps_link": None,
-                "status": "Location unavailable"
+                "status": "Location unavailable",
+                "is_gps": False
             }
 
     def clear(self):
