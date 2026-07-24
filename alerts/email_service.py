@@ -106,7 +106,7 @@ def _build_html_body(alert_info: dict) -> str:
     )
     
     location = alert_info.get("location", {})
-    if location and location.get("status") == "available":
+    if location and location.get("status", "").startswith("available"):
         lat = location.get("latitude")
         lng = location.get("longitude")
         acc = location.get("accuracy", "N/A")
