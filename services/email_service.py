@@ -18,9 +18,10 @@ class EmailService:
         self.email_from = os.environ.get("EMAIL_FROM", "")
 
     def send_emergency_email(self, recipients, subject, body_content):
-        # Validate recipients and deduplicate (preserving order).
-        # Deduplication is important during DEV_MODE where all four slots
-        # may hold the same test address — we only want one email delivered.
+        from alerts.email_service import send_alert_email
+        from alerts.smtp_config import RECIPIENTS, SMTP_USER, SMTP_PASSWORD
+        import cv2
+
         seen = set()
         valid_recipients = []
         for r in recipients:
@@ -29,35 +30,39 @@ class EmailService:
                 seen.add(addr)
                 valid_recipients.append(addr)
         if not valid_recipients:
-            raise ValueError("No contacts configured.")
+            valid_recipients = RECIPIENTS
 
-        # Setup email MIME structure
-        msg = MIMEMultipart()
-        msg["From"] = self.email_from
-        msg["To"] = ", ".join(valid_recipients)
-        msg["Subject"] = subject
-        msg.attach(MIMEText(body_content, "plain"))
+        # Try to locate snapshot & clip from outputs directory if available
+        snapshot_bytes = None
+        clip_path = None
+        debug_video = "outputs/debug_tracking.mp4"
 
-        time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if os.path.exists(debug_video):
+            clip_path = debug_video
+            try:
+                cap = cv2.VideoCapture(debug_video)
+                ret, frame = cap.read()
+                if ret and frame is not None:
+                    from alerts.attachment_generator import generate_snapshot
+                    snapshot_bytes = generate_snapshot(frame)
+                cap.release()
+            except Exception as e:
+                logger.warning(f"Could not extract snapshot for email: {e}")
 
-        try:
-            # Connect to SMTP server
-            server = smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=10)
-            server.starttls()
-            
-            # Authenticate if credentials are provided
-            if self.smtp_username and self.smtp_password:
-                server.login(self.smtp_username, self.smtp_password)
-                
-            server.sendmail(self.email_from, valid_recipients, msg.as_string())
-            server.quit()
+        alert_info = {
+            "track_id": "Alert",
+            "gender": "Female",
+            "distress_type": "Female Distress",
+            "distress_confidence": 0.95,
+            "detection_confidence": 0.95,
+            "video_name": "Security_Feed.mp4",
+            "recognized_name": "Detected Entity",
+            "weapon_detected": False,
+            "recipients": valid_recipients,
+        }
 
-            # Audit log success without exposing password credentials
-            logger.info(f"[{time_str}] Emergency email broadcasted successfully to {valid_recipients}")
+        success = send_alert_email(alert_info, snapshot_bytes=snapshot_bytes, clip_path=clip_path)
+        if success:
             return len(valid_recipients)
-        except smtplib.SMTPAuthenticationError as e:
-            logger.error(f"[{time_str}] SMTP Authentication failure: {e}")
-            raise RuntimeError("SMTP authentication failed")
-        except Exception as e:
-            logger.error(f"[{time_str}] SMTP transmission failure: {e}")
-            raise e
+        else:
+            raise RuntimeError("Failed to send emergency alert email")
