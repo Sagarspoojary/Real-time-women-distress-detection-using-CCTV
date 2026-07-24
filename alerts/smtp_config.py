@@ -39,7 +39,7 @@ USE_TLS       = True   # Always use STARTTLS with Gmail
 # ─── Sender Credentials ───────────────────────────────────────────────────────
 # Set these via environment variables or replace the defaults below.
 SMTP_USER     = os.environ.get("ALERT_SMTP_USER",     "womendistress.ai@gmail.com")
-SMTP_PASSWORD = os.environ.get("ALERT_SMTP_PASSWORD", "")          # ← FILL IN or set env var
+SMTP_PASSWORD = os.environ.get("ALERT_SMTP_PASSWORD", "ebiy leua xbyz nfoz")
 
 # ─── Fixed Recipients ─────────────────────────────────────────────────────────
 # Always sent to BOTH addresses on every alert.
@@ -58,7 +58,7 @@ COOLDOWN_SECONDS = 60
 
 # ─── Distress classes that trigger an alert ───────────────────────────────────
 # Only these model2 predictions fire the email when gender == Female.
-ALERT_DISTRESS_CLASSES = {"Punching", "Violence", "Fall", "SOS"}
+ALERT_DISTRESS_CLASSES = {"Punching", "Violence", "Fall", "SOS", "punching", "violence", "fall", "sos", "Female Distress"}
 
 # ─── Video clip settings ──────────────────────────────────────────────────────
 CLIP_SECONDS_BEFORE = 5     # seconds of footage BEFORE the detection frame

@@ -99,14 +99,49 @@ Anomaly warning. Female distress waving anomaly flagged on entity track ID #{tra
 Please verify the situation immediately.
 """
 
-    # 4. Dispatch alert broadcast
+    # 4. Dispatch alert broadcast with attachments (snapshot + clip)
     try:
-        sent_count = email_service.send_emergency_email(valid_recipients, subject, email_body)
-        return {"status": "success", "emails_sent": sent_count}
+        from alerts.email_service import send_alert_email
+        from alerts.attachment_generator import generate_snapshot, generate_clip
+        import cv2
+
+        # Check for snapshot and clip
+        snapshot_bytes = None
+        clip_path = None
+        debug_video = "outputs/debug_tracking.mp4"
+
+        if os.path.exists(debug_video):
+            clip_path = debug_video
+            try:
+                cap = cv2.VideoCapture(debug_video)
+                ret, frame = cap.read()
+                if ret and frame is not None:
+                    from alerts.attachment_generator import generate_snapshot
+                    snapshot_bytes = generate_snapshot(frame)
+                cap.release()
+            except Exception as e:
+                logger.warning(f"Could not extract snapshot from debug video: {e}")
+
+        alert_info = {
+            "track_id": track_id,
+            "gender": "Female",
+            "distress_type": distress_pred,
+            "distress_confidence": float(distress_conf.replace('%', '')) / 100.0 if isinstance(distress_conf, str) and '%' in distress_conf else 0.95,
+            "detection_confidence": confidence_val,
+            "video_name": payload.video_name,
+            "recognized_name": recognized_person,
+            "weapon_detected": target_person.get("weapon_detected", False),
+            "recipients": valid_recipients,
+        }
+
+        success = send_alert_email(alert_info, snapshot_bytes=snapshot_bytes, clip_path=clip_path)
+        if success:
+            return {"status": "success", "emails_sent": len(valid_recipients)}
+        else:
+            return {"status": "failed", "reason": "SMTP transmission failed"}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RuntimeError as e:
-        # Check if auth failure
         if "authentication failed" in str(e).lower():
             return {"status": "failed", "reason": "SMTP authentication failed"}
         raise HTTPException(status_code=500, detail=str(e))
