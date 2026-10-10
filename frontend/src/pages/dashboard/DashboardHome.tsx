@@ -12,6 +12,7 @@ import {
   Tooltip, 
   ResponsiveContainer
 } from "recharts";
+import { useLocation } from "../../contexts/LocationContext";
 import { 
   FiPlay, 
   FiRadio, 
@@ -22,7 +23,8 @@ import {
   FiTv, 
   FiAlertTriangle, 
   FiTrendingUp, 
-  FiLayers
+  FiLayers,
+  FiMapPin
 } from "react-icons/fi";
 
 interface HistoryItem {
@@ -38,6 +40,7 @@ interface HistoryItem {
 
 const DashboardHome: React.FC = () => {
   const { user } = useAuth();
+  const { location } = useLocation();
   const navigate = useNavigate();
 
   // Ticking time state
@@ -227,6 +230,43 @@ const DashboardHome: React.FC = () => {
             <div>
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Active Pipeline</span>
               <span className="text-xs font-extrabold text-slate-100 block mt-0.5">3 / 10 ONLINE</span>
+            </div>
+          </div>
+        </div>
+
+        {/* GPS Location Status Card */}
+        <div className="glass-panel p-4 rounded-xl border border-slate-900 flex items-center justify-between col-span-1 md:col-span-2 lg:col-span-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-slate-900 border border-slate-800 text-cyan-400 rounded-xl">
+              <FiMapPin className="text-cyan-400" />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Current Camera GPS Location</span>
+              <div className="flex items-center gap-3 mt-1 text-xs font-semibold">
+                <span className="text-slate-300">
+                  <strong className="text-slate-500">Camera:</strong> CAM-01 (Main Entrance)
+                </span>
+                <span className="text-slate-500">|</span>
+                <span className="text-slate-300">
+                  <strong className="text-slate-500">Lat:</strong> {location.latitude != null ? location.latitude.toFixed(6) : "N/A"}
+                </span>
+                <span className="text-slate-300">
+                  <strong className="text-slate-500">Lng:</strong> {location.longitude != null ? location.longitude.toFixed(6) : "N/A"}
+                </span>
+                <span className="text-slate-300">
+                  <strong className="text-slate-500">Accuracy:</strong> {location.accuracy != null ? `±${Math.round(location.accuracy)}m` : "N/A"}
+                </span>
+                <span className="text-slate-500">|</span>
+                <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                  location.permissionStatus === "granted" 
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                    : location.permissionStatus === "denied"
+                    ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                    : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                }`}>
+                  Permission: {location.permissionStatus}
+                </span>
+              </div>
             </div>
           </div>
         </div>

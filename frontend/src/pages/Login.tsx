@@ -6,8 +6,7 @@ import { z } from "zod";
 import { useAuth } from "../contexts/AuthContext";
 import { 
   BsShieldFillExclamation, 
-  BsGoogle, 
-  BsGithub,
+  BsGoogle,
   BsEye,
   BsEyeSlash 
 } from "react-icons/bs";
@@ -23,7 +22,7 @@ const loginSchema = z.object({
 type LoginFields = z.infer<typeof loginSchema>;
 
 const Login: React.FC = () => {
-  const { signInWithEmail, signInWithGoogle, signInWithGithub } = useAuth();
+  const { signInWithEmail, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -55,18 +54,6 @@ const Login: React.FC = () => {
     setLoading(true);
     try {
       await signInWithGoogle();
-      navigate("/dashboard");
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGithubLogin = async () => {
-    setLoading(true);
-    try {
-      await signInWithGithub();
       navigate("/dashboard");
     } catch (err) {
       console.error(err);
@@ -192,13 +179,6 @@ const Login: React.FC = () => {
             className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-slate-900/60 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-sm text-slate-200 hover:text-white transition-all disabled:opacity-50"
           >
             <BsGoogle className="text-red-500 text-xs" /> Google
-          </button>
-          <button
-            onClick={handleGithubLogin}
-            disabled={loading}
-            className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-slate-900/60 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-sm text-slate-200 hover:text-white transition-all disabled:opacity-50"
-          >
-            <BsGithub className="text-slate-300 text-xs" /> GitHub
           </button>
         </div>
 

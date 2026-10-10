@@ -9,7 +9,7 @@ import {
   signOut,
   updateProfile
 } from "firebase/auth";
-import { auth, googleProvider, githubProvider } from "../services/firebase";
+import { auth, googleProvider } from "../services/firebase";
 import toast from "react-hot-toast";
 
 interface AuthContextType {
@@ -18,7 +18,6 @@ interface AuthContextType {
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string, fullName: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  signInWithGithub: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -69,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       toast.success("Logged in with Google!");
     } catch (error: any) {
       if (error.code === "auth/account-exists-with-different-credential") {
-        toast.error("This email is already associated with another login method (e.g., Email or GitHub). Please sign in using your original provider.");
+        toast.error("This email is already associated with another login method. Please sign in using your original provider.");
       } else {
         toast.error(error.message || "Google Login failed.");
       }
@@ -77,19 +76,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithGithub = async () => {
-    try {
-      await signInWithPopup(auth, githubProvider);
-      toast.success("Logged in with GitHub!");
-    } catch (error: any) {
-      if (error.code === "auth/account-exists-with-different-credential") {
-        toast.error("This email is already associated with another login method (e.g., Google or Email). Please sign in using your original provider.");
-      } else {
-        toast.error(error.message || "GitHub Login failed.");
-      }
-      throw error;
-    }
-  };
 
   const resetPassword = async (email: string) => {
     try {
@@ -118,7 +104,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signInWithEmail,
       signUpWithEmail,
       signInWithGoogle,
-      signInWithGithub,
       resetPassword,
       logout
     }}>

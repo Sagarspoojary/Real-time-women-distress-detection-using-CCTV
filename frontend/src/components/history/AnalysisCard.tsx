@@ -16,6 +16,7 @@ interface HistoryItem {
   persons?: any[];
   status?: string;
   emailSent?: string;
+  location?: { latitude: number; longitude: number; accuracy?: number };
 }
 
 interface AnalysisCardProps {
@@ -82,8 +83,15 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({
 
       {/* 2. Upload and frames metrics row */}
       <div className="grid grid-cols-2 gap-y-2 py-3 border-y border-slate-900/60 font-semibold text-slate-500">
-        <div className="flex items-center gap-1.5 col-span-2">
-          <FiClock /> <span>{uploadDate} @ {uploadTime}</span>
+        <div className="flex items-center justify-between col-span-2">
+          <div className="flex items-center gap-1.5">
+            <FiClock /> <span>{uploadDate} @ {uploadTime}</span>
+          </div>
+          {item.location?.latitude != null && (
+            <span className="text-[10px] text-cyan-400 font-bold flex items-center gap-1" title="Location Available">
+              📍 Location
+            </span>
+          )}
         </div>
         <div>
           <span className="text-[9px] text-slate-500 uppercase tracking-wider block font-semibold">Violence</span>

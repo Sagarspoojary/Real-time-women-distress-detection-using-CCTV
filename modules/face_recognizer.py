@@ -4,12 +4,34 @@ import base64
 
 class FaceRecognizer:
     def __init__(self):
-        # Load Haar Cascade face classifier built into OpenCV
-        cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-        if os.path.exists(cascade_path):
+        # Robust Haar cascade file resolution
+        filename = "haarcascade_frontalface_default.xml"
+        candidate_paths = [
+            os.path.join(cv2.data.haarcascades, filename),
+            os.path.join(os.path.dirname(cv2.__file__), "data", filename),
+            os.path.join("models", filename),
+            os.path.join("data", filename),
+            r"C:\Users\Manoj\.gemini\antigravity-ide\playground\celestial-telescope\.venv\Lib\site-packages\cv2\data\haarcascade_frontalface_default.xml",
+            r"C:\Users\Manoj\test\venv\Lib\site-packages\cv2\data\haarcascade_frontalface_default.xml",
+        ]
+
+        cascade_path = None
+        for path in candidate_paths:
+            if os.path.exists(path):
+                cascade_path = path
+                break
+
+        self.face_cascade = None
+        if cascade_path is not None and hasattr(cv2, "CascadeClassifier"):
             self.face_cascade = cv2.CascadeClassifier(cascade_path)
+            if self.face_cascade.empty():
+                print(f"Warning: Failed to load Haar cascade from: {cascade_path}")
+                self.face_cascade = None
+            else:
+                print(f"[FaceRecognizer] Successfully loaded Haar cascade from: {cascade_path}")
+        elif cascade_path is not None:
+            print(f"Warning: OpenCV build lacks CascadeClassifier support; found cascade XML at {cascade_path}")
         else:
-            self.face_cascade = None
             print("Warning: Haar cascade face XML classifier file not found.")
 
     def recognize_face(self, person_crop, track_id, video_name=""):

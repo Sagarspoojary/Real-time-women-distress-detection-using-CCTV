@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { uploadAndAnalyzeVideo, API_BASE_URL } from "../../services/api";
+import { useLocation } from "../../contexts/LocationContext";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -24,6 +25,7 @@ import {
 import { BsBoundingBox } from "react-icons/bs";
 
 const UploadVideo: React.FC = () => {
+  const { location } = useLocation();
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [originalUrl, setOriginalUrl] = useState<string | null>(null);
@@ -155,15 +157,19 @@ const UploadVideo: React.FC = () => {
     setErrorMsg(null);
 
     try {
-      const data = await uploadAndAnalyzeVideo(file, (progressEvent) => {
-        const percentCompleted = Math.round(
-          (progressEvent.loaded * 100) / progressEvent.total
-        );
-        setUploadProgress(percentCompleted);
-        if (percentCompleted === 100) {
-          setStatusStage("processing");
-        }
-      });
+      const data = await uploadAndAnalyzeVideo(
+        file,
+        (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          setUploadProgress(percentCompleted);
+          if (percentCompleted === 100) {
+            setStatusStage("processing");
+          }
+        },
+        location
+      );
 
       setResults(data);
       setStatusStage("completed");
@@ -173,7 +179,7 @@ const UploadVideo: React.FC = () => {
       // Persist results log locally for dashboard integration
       try {
         const historyItem = {
-          id: String(Date.now()),
+          id: data.incident_id || String(Date.now()),
           videoName: file.name,
           timestamp: new Date().toISOString(),
           model1: data.model1,
@@ -632,8 +638,22 @@ const UploadVideo: React.FC = () => {
                   { label: "Distress Detection", done: true },
                   { label: "Face Recognition", done: true },
                   { label: "Gender Classification", done: true },
-                  { label: "Emergency Ready", done: results?.persons?.some((p: any) => p.gender === "Female" && p.distress) },
-                  { label: "Email Sent", done: emailSent }
+                  { 
+                    label: "Emergency Ready", 
+                    done: Boolean(
+                      results?.persons?.some((p: any) => p.distress || p.gender === "Female") ||
+                      (results?.model1?.prediction && results.model1.prediction !== "Normal") ||
+                      (results?.model2?.prediction && results.model2.prediction !== "Normal")
+                    ) 
+                  },
+                  { 
+                    label: "Email Sent", 
+                    done: Boolean(
+                      emailSent || 
+                      (results?.model1?.prediction && results.model1.prediction !== "Normal") ||
+                      (results?.model2?.prediction && results.model2.prediction !== "Normal")
+                    ) 
+                  }
                 ].map((step, idx) => (
                   <div key={idx} className="flex flex-col gap-1.5 p-3 bg-slate-950/20 border border-slate-900/60 rounded-xl items-center text-center">
                     <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-[9px] border ${

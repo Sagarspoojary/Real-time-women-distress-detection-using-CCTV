@@ -1,0 +1,27 @@
+{
+    "startup": {
+        "startup_time_sec": 38.11,
+        "models_initialized": 4,
+        "initial_gpu_mem_allocated_mb": 750.33,
+        "initial_gpu_mem_reserved_mb": 1136.0,
+        "initial_cpu_ram_mb": 1081.4
+    },
+    "inference": {
+        "samples_measured": 5,
+        "model1_mean_s": 1.181,
+        "model2_mean_s": 1.186,
+        "yolo_mean_s": 0.080,
+        "pipeline_videomae_mean_s": 2.338,
+        "videomae_cycles_per_sec": 0.43,
+        "videomae_effective_fps": 6.84
+    },
+    "incident": {
+        "persistence_time_ms": 21.4,
+        "ws_push_time_ms": 0.013
+    },
+    "camera_stability": {
+        "frames_submitted": 4,
+        "processed_frames": 4,
+        "dropped_frames": 0
+    }
+}

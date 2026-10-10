@@ -36,6 +36,7 @@ const Settings: React.FC = () => {
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
 
   // Edit Modals
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -380,7 +381,7 @@ const Settings: React.FC = () => {
                   { label: "Critical Alerts", desc: "Instantly prompt blinking warning alerts on violence anomalies.", state: notifyCritical, set: setNotifyCritical },
                   { label: "Warning Alerts", desc: "Flag medium risk distress gestures.", state: notifyWarning, set: setNotifyWarning },
                   { label: "Email Notifications (Placeholder)", desc: "Dispatch warning report summaries to SMTP accounts.", state: notifyEmail, set: setNotifyEmail },
-                  { label: "SMS Notifications (Placeholder)", desc: "Forward distress events via Twilio SMS targets.", state: notifySms, set: setNotifySms },
+                  { label: "SMS Notifications (Placeholder)", desc: "Forward distress events via TextBee SMS targets.", state: notifySms, set: setNotifySms },
                   { label: "Desktop Notifications", desc: "Show browser system notification overlays on anomalies.", state: notifyDesktop, set: setNotifyDesktop },
                   { label: "Sound Alerts", desc: "Sound threat buzzer alert logs.", state: notifySound, set: setNotifySound }
                 ].map((item, idx) => (
@@ -594,53 +595,92 @@ const Settings: React.FC = () => {
           {activeTab === "contacts" && (
             <div className="space-y-6">
               <h2 className="font-extrabold text-sm text-slate-200 border-b border-slate-900 pb-3 flex items-center gap-1.5 uppercase tracking-wide">
-                <FiUsers className="text-cyan-400" /> Emergency contacts dashboard
+                <FiUsers className="text-cyan-400" /> Emergency contacts & SMS/Voice Alerts
               </h2>
 
               <p className="text-slate-400 text-xs">
-                Configure exactly four emergency email addresses that will receive instant broadcasts during distress incidents.
+                Configure up to four emergency contacts (Email & E.164 Phone numbers) to receive instant incident broadcasts and automated emergency voice calls.
               </p>
 
               {loadingContacts ? (
                 <div className="text-xs text-slate-500 italic py-4">Syncing database contact registries...</div>
               ) : (
                 <div className="space-y-4">
-                  {contacts.map((email, idx) => {
+                  {contacts.map((item: any, idx: number) => {
                     const isEditing = editingIdx === idx;
+                    const contactObj = typeof item === "string" ? { name: `Contact ${idx + 1}`, email: item, phone: "", enabled: true } : item;
+
                     return (
-                      <div key={idx} className="flex flex-col sm:flex-row items-center justify-between p-4 bg-slate-950/20 border border-slate-900 rounded-xl gap-4">
-                        <div className="flex-grow w-full">
-                          <span className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Emergency Contact {idx + 1}</span>
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editEmail}
-                              onChange={(e) => setEditEmail(e.target.value)}
-                              className="w-full px-3 py-1.5 rounded-lg glass-input text-slate-200 font-bold"
-                              placeholder="Enter email address"
-                            />
-                          ) : (
-                            <span className="font-mono font-bold text-slate-200 block text-xs">{email || "Not Configured"}</span>
-                          )}
+                      <div key={idx} className="flex flex-col p-4 bg-slate-950/20 border border-slate-900 rounded-xl gap-3">
+                        <div className="flex items-center justify-between border-b border-slate-900/60 pb-2">
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                            {contactObj.name || `Emergency Contact ${idx + 1}`}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-extrabold uppercase ${contactObj.enabled ? 'bg-emerald-950/40 border border-emerald-500/20 text-emerald-400' : 'bg-slate-900 text-slate-500'}`}>
+                            {contactObj.enabled ? "Active" : "Disabled"}
+                          </span>
                         </div>
 
-                        <div className="flex gap-2 w-full sm:w-auto">
+                        {isEditing ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-1">
+                            <div>
+                              <label className="text-[9px] font-bold text-slate-500 block uppercase mb-1">Email Address</label>
+                              <input
+                                type="email"
+                                value={editEmail}
+                                onChange={(e) => setEditEmail(e.target.value)}
+                                className="w-full px-3 py-1.5 rounded-lg glass-input text-slate-200 font-mono text-xs"
+                                placeholder="contact@example.com"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-bold text-slate-500 block uppercase mb-1">Phone Number (E.164)</label>
+                              <input
+                                type="text"
+                                value={editPhone}
+                                onChange={(e) => setEditPhone(e.target.value)}
+                                className="w-full px-3 py-1.5 rounded-lg glass-input text-slate-200 font-mono text-xs"
+                                placeholder="+919876543210 or +14155552671"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
+                            <div>
+                              <span className="text-[8px] text-slate-500 block uppercase">Email</span>
+                              <span className="font-bold text-slate-200">{contactObj.email || "Not Configured"}</span>
+                            </div>
+                            <div>
+                              <span className="text-[8px] text-slate-500 block uppercase">Phone</span>
+                              <span className="font-bold text-slate-200">{contactObj.phone || "Not Configured"}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 justify-end pt-1">
                           {isEditing ? (
                             <>
                               <button
                                 type="button"
                                 onClick={async () => {
-                                  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editEmail.trim())) {
+                                  if (editEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editEmail.trim())) {
                                     toast.error("Please enter a valid email address.");
+                                    return;
+                                  }
+                                  if (editPhone.trim() && !/^\+[1-9]\d{6,14}$/.test(editPhone.trim())) {
+                                    toast.error("Phone number must use E.164 format (e.g. +919876543210 or +14155552671).");
                                     return;
                                   }
                                   try {
                                     const response = await axios.put(`${API_BASE_URL}/api/v1/emergency-contacts/${idx}`, {
-                                      email: editEmail.trim()
+                                      name: contactObj.name || `Contact ${idx + 1}`,
+                                      email: editEmail.trim(),
+                                      phone: editPhone.trim(),
+                                      enabled: true
                                     });
                                     setContacts(response.data.contacts);
                                     setEditingIdx(null);
-                                    toast.success("Contact saved to server.");
+                                    toast.success("Contact saved successfully.");
                                   } catch (err: any) {
                                     toast.error(err.response?.data?.detail || "Failed to save contact.");
                                   }
@@ -663,7 +703,8 @@ const Settings: React.FC = () => {
                                 type="button"
                                 onClick={() => {
                                   setEditingIdx(idx);
-                                  setEditEmail(email);
+                                  setEditEmail(contactObj.email || "");
+                                  setEditPhone(contactObj.phone || "");
                                 }}
                                 className="px-3.5 py-1.5 bg-slate-900 border border-slate-800 hover:border-slate-700 text-white font-bold rounded-lg cursor-pointer uppercase tracking-wider text-[10px]"
                               >
@@ -675,7 +716,7 @@ const Settings: React.FC = () => {
                                   try {
                                     const response = await axios.delete(`${API_BASE_URL}/api/v1/emergency-contacts/${idx}`);
                                     setContacts(response.data.contacts);
-                                    toast.success("Contact cleared on server.");
+                                    toast.success("Contact cleared.");
                                   } catch (err: any) {
                                     toast.error(err.response?.data?.detail || "Failed to clear contact.");
                                   }

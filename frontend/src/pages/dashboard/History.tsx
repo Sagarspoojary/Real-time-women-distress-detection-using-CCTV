@@ -11,6 +11,7 @@ import {
   FiPlay,
   FiFileText
 } from "react-icons/fi";
+import { fetchHistory } from "../../services/api";
 
 interface HistoryItem {
   id: string;
@@ -21,6 +22,8 @@ interface HistoryItem {
   model3?: { people_detected: number; frames_processed: number };
   persons?: any[];
   status?: string;
+  emailSent?: string;
+  location?: any;
 }
 
 const History: React.FC = () => {
@@ -28,6 +31,9 @@ const History: React.FC = () => {
 
   // Logs list state
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,14 +48,113 @@ const History: React.FC = () => {
   const [itemToDelete, setItemToDelete] = useState<HistoryItem | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
-  // Load history from localStorage
+  // Load history from backend and localStorage
   useEffect(() => {
-    try {
-      const logs = JSON.parse(localStorage.getItem("distress_ai_history") || "[]");
-      setHistory(logs);
-    } catch (err) {
-      console.error("Failed to read storage history logs", err);
-    }
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout>;
+    let isMounted = true;
+    let reconnectAttempts = 0;
+
+    const loadHistoryData = async () => {
+      try {
+        setLoading(true);
+        // Load local history
+        const localLogs: HistoryItem[] = JSON.parse(localStorage.getItem("distress_ai_history") || "[]");
+        
+        // Fetch backend history
+        const backendLogs: HistoryItem[] = await fetchHistory(0, 500);
+        
+        // Merge and deduplicate by id
+        const merged = [...backendLogs];
+        const backendIds = new Set(backendLogs.map(item => item.id));
+        
+        for (const localLog of localLogs) {
+          if (!backendIds.has(localLog.id)) {
+            merged.push(localLog);
+          }
+        }
+        
+        // Sort by timestamp desc to be consistent
+        merged.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        
+        if (isMounted) {
+          setHistory(merged);
+          setError(null);
+        }
+      } catch (err) {
+        console.error("Failed to load history logs", err);
+        if (isMounted) {
+          setError("Failed to fetch backend history. Showing local history only.");
+          const localLogs = JSON.parse(localStorage.getItem("distress_ai_history") || "[]");
+          setHistory(localLogs);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    
+    // Initial load
+    loadHistoryData();
+
+    // WebSocket Setup
+    const connectWebSocket = () => {
+      // Use existing API_BASE_URL to derive WS url
+      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+      const wsUrl = API_BASE_URL.replace(/^http/, 'ws') + "/api/v1/ws/alerts";
+      
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        if (isMounted) {
+          setWsConnected(true);
+          reconnectAttempts = 0;
+          // Refresh data on successful reconnect to catch missed events
+          if (!loading) {
+            loadHistoryData();
+          }
+        }
+      };
+
+      ws.onmessage = (event) => {
+        if (!isMounted) return;
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "NEW_INCIDENT" && data.incident_id) {
+            // Re-fetch lightly to ensure authoritative data is shown
+            // Avoid excessive fetching if many events arrive instantly
+            loadHistoryData();
+          }
+        } catch (e) {
+          console.error("Failed to parse WS message", e);
+        }
+      };
+
+      ws.onclose = () => {
+        if (isMounted) {
+          setWsConnected(false);
+          // Exponential backoff reconnect
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 15000);
+          reconnectAttempts++;
+          reconnectTimeout = setTimeout(connectWebSocket, delay);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        ws?.close();
+      };
+    };
+
+    connectWebSocket();
+
+    return () => {
+      isMounted = false;
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (ws) {
+        ws.onclose = null; // Prevent reconnect logic on unmount
+        ws.close();
+      }
+    };
   }, []);
 
   const handleInspect = (item: HistoryItem) => {
@@ -188,7 +293,13 @@ const History: React.FC = () => {
       {/* 1. Header & Quick export buttons */}
       <div className="glass-panel p-6 rounded-2xl border border-slate-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Inference Incident Archives</h1>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+            Inference Incident Archives
+            <span 
+              className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]'}`}
+              title={wsConnected ? 'Live Updates Connected' : 'Live Updates Disconnected'}
+            />
+          </h1>
           <p className="text-xs text-slate-400 mt-1">Browse, filter, and inspect previous camera footage processing records.</p>
         </div>
         
@@ -202,7 +313,18 @@ const History: React.FC = () => {
         )}
       </div>
 
-      {history.length === 0 ? (
+      {error && (
+        <div className="glass-panel p-4 rounded-xl border border-rose-900/50 bg-rose-950/20 text-rose-400 text-xs mb-4">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="glass-panel p-12 rounded-2xl border border-slate-900 text-center flex flex-col items-center justify-center gap-4 py-16">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500 mb-2"></div>
+          <h3 className="font-extrabold text-sm text-slate-200 uppercase tracking-wider">Loading Incident Archives...</h3>
+        </div>
+      ) : history.length === 0 ? (
         /* Empty State Illustration */
         <div className="glass-panel p-12 rounded-2xl border border-slate-900 text-center flex flex-col items-center justify-center gap-4 py-16">
           <div className="p-4 bg-slate-900 border border-slate-800 text-slate-500 rounded-3xl mb-2">

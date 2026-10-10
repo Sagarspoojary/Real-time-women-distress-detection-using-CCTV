@@ -1,38 +1,35 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { 
-  getAuth, 
-  GoogleAuthProvider, 
-  GithubAuthProvider 
+import {
+  getAuth,
+  GoogleAuthProvider,
 } from "firebase/auth";
 
+// Firebase configuration
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: "AIzaSyA1XlqmfpFKVSm8VCR-OB9Ujnba_Rmvv9Y",
+  authDomain: "women-distress-detection-d16ce.firebaseapp.com",
+  projectId: "women-distress-detection-d16ce",
+  storageBucket: "women-distress-detection-d16ce.firebasestorage.app",
+  messagingSenderId: "358615334323",
+  appId: "1:358615334323:web:ee0af9cd053186ee7c1fc6",
+  measurementId: "G-FZJM68ES18",
 };
 
-// Helper flag to detect if Firebase credentials have been configured
-const isConfigured = 
-  !!firebaseConfig.apiKey && 
-  firebaseConfig.apiKey !== "your_api_key_here" && 
-  firebaseConfig.apiKey !== "";
+// Initialize Firebase only once
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-let app;
-try {
-  if (getApps().length === 0) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApp();
-  }
-} catch (error) {
-  console.warn("Firebase initialization skipped or failed. Using fallback modes if necessary.", error);
-}
-
+// Firebase Authentication
 const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
-const githubProvider = new GithubAuthProvider();
 
-export { auth, googleProvider, githubProvider, isConfigured };
+// Providers
+const googleProvider = new GoogleAuthProvider();
+
+// Indicates Firebase has been configured
+const isConfigured = true;
+
+export {
+  app,
+  auth,
+  googleProvider,
+  isConfigured,
+};

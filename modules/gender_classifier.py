@@ -74,15 +74,15 @@ CACHE_MIN_VOTES: int = 5
 # ─────────────────────────────────────────────────────────────────────────────
 # Quality gates (applied before running the model)
 # ─────────────────────────────────────────────────────────────────────────────
-MIN_CROP_W: int = 30           # pixels — crops narrower than this are skipped
-MIN_CROP_H: int = 60           # pixels — crops shorter than this are skipped
-MAX_BLUR_LAPLACIAN: float = 10.0  # Laplacian variance below this → skip (too blurry)
+MIN_CROP_W: int = 15           # pixels — relaxed for distant surveillance targets
+MIN_CROP_H: int = 30           # pixels — relaxed for distant surveillance targets
+MAX_BLUR_LAPLACIAN: float = 1.0   # relaxed blur filter so surveillance frames pass
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Temporal voting
 # ─────────────────────────────────────────────────────────────────────────────
 VOTE_WINDOW: int = 10          # rolling window size per track
-MIN_MAJORITY: int = 4          # minimum votes for the winning class to be accepted
+MIN_MAJORITY: int = 2          # minimum votes needed for majority output
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Crop padding (fraction of YOLO box dimension, applied symmetrically)

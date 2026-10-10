@@ -1,16 +1,18 @@
 from fastapi import APIRouter, HTTPException, Path, Body
-from typing import List
+from typing import List, Optional, Union, Dict, Any
 from pydantic import BaseModel
 from services.emergency_contact_service import EmergencyContactService
 
 router = APIRouter()
 service = EmergencyContactService()
 
-class ContactsPayload(BaseModel):
-    contacts: List[str]
 
 class ContactUpdatePayload(BaseModel):
-    email: str
+    name: Optional[str] = "Emergency Contact"
+    email: Optional[str] = ""
+    phone: Optional[str] = ""
+    enabled: Optional[bool] = True
+
 
 @router.get("/emergency-contacts")
 async def get_contacts():
@@ -20,23 +22,19 @@ async def get_contacts():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/emergency-contacts")
-async def post_contacts(payload: ContactsPayload):
-    try:
-        updated = service.set_contacts(payload.contacts)
-        return {"contacts": updated}
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/emergency-contacts/{index}")
 async def put_contact(
     index: int = Path(..., description="Index of contact (0-3)", ge=0, le=3),
-    payload: ContactUpdatePayload = Body(...)
+    payload: Union[ContactUpdatePayload, Dict[str, Any]] = Body(...)
 ):
     try:
-        updated = service.update_contact(index, payload.email)
+        data = payload.dict() if hasattr(payload, "dict") else payload
+        # If payload was simple legacy {"email": "..."}, handle gracefully
+        if "email" in data and len(data) == 1:
+            data = {"email": data["email"], "phone": "", "enabled": True}
+            
+        updated = service.update_contact(index, data)
         return {"contacts": updated}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -44,6 +42,7 @@ async def put_contact(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.delete("/emergency-contacts/{index}")
 async def delete_contact(

@@ -2,24 +2,52 @@ from fastapi import APIRouter, UploadFile, File
 import shutil
 import os
 
+# NOTE: .env is loaded in app.py before this module is imported.
 from modules.pipeline import WomenDistressPipeline
+from services.alert_dispatcher import AlertDispatcher
 
 router = APIRouter()
 
 pipeline = WomenDistressPipeline()
+alert_dispatcher = AlertDispatcher()
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
+from fastapi import Form
+from typing import Optional
+
 @router.post("/predict")
-async def predict(file: UploadFile = File(...)):
+async def predict(
+    file: UploadFile = File(...),
+    latitude: Optional[float] = Form(None),
+    longitude: Optional[float] = Form(None),
+    accuracy: Optional[float] = Form(None),
+    timestamp: Optional[float] = Form(None),
+):
     video_path = os.path.join(UPLOAD_DIR, file.filename)
 
     with open(video_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     result = pipeline.process(video_path)
+
+    # Attach location data if available
+    gps_data = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "accuracy": accuracy,
+        "timestamp": timestamp,
+    }
+    result["location"] = gps_data
+
+    # Automatically dispatch an alert email if a threat was detected above threshold.
+    # This call is fully self-contained — it never raises, never blocks the response.
+    incident_id = alert_dispatcher.maybe_dispatch(result, video_path, location_data=gps_data)
+    
+    if incident_id:
+        result["incident_id"] = incident_id
 
     return result
 

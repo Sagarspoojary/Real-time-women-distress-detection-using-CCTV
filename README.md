@@ -69,7 +69,7 @@ Video Input (CCTV / Uploaded File)
 | **Gender Classification** | EfficientNetV2-S (timm) |
 | **Face Recognition** | OpenCV Haar Cascade + face_recognition |
 | **Weapon Detection** | Custom YOLO-based detector |
-| **Emergency Alerts** | SMTP email via Python smtplib |
+| **Emergency Alerts** | SMTP email + Fast2SMS SMS (WhatsApp Cloud API optional, Voice disabled) |
 
 ---
 

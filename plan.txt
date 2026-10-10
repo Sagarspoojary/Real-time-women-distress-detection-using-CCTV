@@ -1,0 +1,97 @@
+================================================================================
+REAL-TIME CCTV VIOLENCE DETECTION & SMS/CALL PHONE NOTIFICATION ARCHITECTURE PLAN
+================================================================================
+
+1. EXECUTIVE OVERVIEW
+---------------------
+The current safety monitoring system processes video files/streams using VideoMAE, 
+YOLO11, and EfficientNetV2, and dispatches automated emergency alerts via SMTP Email.
+To send real-time alerts to registered phone numbers (via SMS and/or WhatsApp/Voice Call), 
+the system requires:
+  a. Real-time RTSP/CCTV video feed stream processing.
+  b. Twilio / Fast2SMS API gateway integration for immediate SMS and Phone Call dispatch.
+  c. Phone number management service (registration, validation, and storage).
+  d. Real-time alert trigger engine in AlertDispatcher.
+
+--------------------------------------------------------------------------------
+
+2. ARCHITECTURE & COMPONENT WORKFLOW
+------------------------------------
+
+┌────────────────────────┐
+│ CCTV / RTSP Stream     │  Continuous live frame capture
+└───────────┬────────────┘
+            │
+            ▼
+┌────────────────────────┐
+│ AI Processing Pipeline │  VideoMAE Violence & Distress Detection
+│ (Violence Detector)   │  YOLO Person Track + Gender Classifier
+└───────────┬────────────┘
+            │  Violence/Distress >= Threshold (e.g., 75%)
+            ▼
+┌────────────────────────┐
+│ Alert Dispatcher       │  Rate-limiting & Cooldown Check
+│ Engine                 │  Evaluates trigger criteria & recipient list
+└─────┬────────────┬─────┘
+      │            │
+      ▼            ▼
+┌──────────┐  ┌───────────────────────────────────┐
+│ Email    │  │ SMS / Call Service (Twilio API)   │
+│ Alert    │  │ - Sends SMS to Emergency Phone No │
+│ (SMTP)   │  │ - Triggers Emergency Voice Call   │
+└──────────┘  └───────────────────────────────────┘
+
+--------------------------------------------------------------------------------
+
+3. STEP-BY-STEP IMPLEMENTATION PLAN
+-----------------------------------
+
+STEP 1: TELEPHONY PROVIDER SETUP (TWILIO API INTEGRATION)
+  - Sign up for Twilio (or Fast2SMS for domestic SMS in India).
+  - Obtain:
+      * TWILIO_ACCOUNT_SID
+      * TWILIO_AUTH_TOKEN
+      * TWILIO_PHONE_NUMBER (Sender phone number)
+  - Install dependency:
+      pip install twilio
+
+STEP 2: ENHANCE ENVIRONMENT CONFIGURATION (.env)
+  Add phone alert variables:
+      # Twilio API Configuration
+      TWILIO_ACCOUNT_SID=your_account_sid_here
+      TWILIO_AUTH_TOKEN=your_auth_token_here
+      TWILIO_PHONE_NUMBER=+18005550199
+      ENABLE_SMS_ALERTS=True
+      ENABLE_CALL_ALERTS=True
+
+STEP 3: CREATE PHONE NOTIFICATION SERVICE (`services/sms_service.py`)
+  Implement `SMSService` class:
+  - `send_sms_alert(phone_numbers: list[str], message: str)`: Sends concise text alert with incident location and threat level.
+  - `trigger_emergency_call(phone_numbers: list[str], alert_message: str)`: Triggers automated emergency voice call repeating alert details.
+
+STEP 4: EMERGENCY CONTACT PHONE REGISTRATION (`services/emergency_contact_service.py`)
+  - Update contact schema to accept E.164 phone numbers (e.g., `+919876543210` or `+14155552671`).
+  - Update API routes (`routes/emergency_contacts.py`) and Frontend UI (`Settings.tsx`) to allow users to register up to 4 emergency phone numbers alongside emails.
+
+STEP 5: INTEGRATE PHONE ALERTS INTO ALERT DISPATCHER (`services/alert_dispatcher.py`)
+  - Inside `AlertDispatcher._evaluate_and_dispatch()`:
+      1. Extract registered emergency phone numbers.
+      2. Construct SMS text message body:
+         "EMERGENCY ALERT: Violence/Distress detected at Camera CAM-01 (Main Entrance). Immediate action required. Incident ID: INC-20260815"
+      3. Call `sms_service.send_sms_alert()` concurrently alongside email dispatch.
+      4. If risk level is CRITICAL (>= 90% confidence or Assault), trigger voice call alert via Twilio Voice API.
+
+STEP 6: REAL-TIME RTSP CCTV STREAM WORKER (`modules/rtsp_stream_processor.py`)
+  - Create threaded OpenCV VideoCapture background worker processing live RTSP CCTV camera feeds (`rtsp://username:password@camera_ip:554/stream`).
+  - Process sliding window of 16 frames through `ViolenceDetector`.
+  - On threat detection, pass frame data directly to `AlertDispatcher`.
+
+--------------------------------------------------------------------------------
+
+4. VERIFICATION AND TESTING PLAN
+--------------------------------
+  1. Test Twilio SMS API standalone script using sandbox numbers.
+  2. Perform end-to-end simulation by processing test violence video.
+  3. Verify phone receives SMS within 2 to 5 seconds of violence detection.
+  4. Verify rate-limiting cooldown prevents duplicate SMS spam.
+================================================================================

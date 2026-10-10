@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import LiveCamera from "../../components/live/LiveCamera";
 import CameraControls from "../../components/live/CameraControls";
 import SystemStatusCard from "../../components/live/SystemStatusCard";
@@ -10,246 +10,313 @@ import AlertCard from "../../components/live/AlertCard";
 import type { AlertData } from "../../components/live/AlertCard";
 import { FiCpu } from "react-icons/fi";
 
+const API = "http://localhost:8000/api/v1";
+const POLL_INTERVAL_MS = 2000; // poll /status every 2 seconds
+
 const LiveDetection: React.FC = () => {
   // Camera state
   const [isActive, setIsActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
-  // Real-time metrics
+  // Camera source configuration
+  const [cameraSource, setCameraSource] = useState<"LOCAL" | "IP">("LOCAL");
+  const [ipUrl, setIpUrl] = useState("http://10.69.157.102:8080/video");
+
+  // Real-time metrics (from status API)
   const [frameNumber, setFrameNumber] = useState(0);
-  const [fps, setFps] = useState(29.4);
-  const [inferenceTime, setInferenceTime] = useState(14.2);
-  const [confidence, setConfidence] = useState(0.934);
-  const [alertLevel, setAlertLevel] = useState<"Normal" | "Warning" | "Critical" | "Emergency">("Normal");
-  
-  // Simulated datasets
-  const [persons, setPersons] = useState<PersonData[]>([]);
+  const [cameraFps, setCameraFps] = useState(0);
+  const [aiFps, setAiFps] = useState(0);
+  const [inferenceTimeMs, setInferenceTimeMs] = useState(0);
+  const [predictedClass, setPredictedClass] = useState("Normal");
+  const [confidence, setConfidence] = useState(0);
+  const [threatState, setThreatState] = useState("NORMAL");
+  const [alertStatus, setAlertStatus] = useState("IDLE");
+
+  const [threatActive, setThreatActive] = useState(false);
+  const [lastIncidentId, setLastIncidentId] = useState<string | null>(null);
+  const [uptimeSeconds, setUptimeSeconds] = useState(0);
+
+  const [, setAlertLevel] = useState<"Normal" | "Warning" | "Critical" | "Emergency">("Normal");
+
+  // UI data
+  const [persons] = useState<PersonData[]>([]);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [alerts, setAlerts] = useState<AlertData[]>([]);
 
-  // Simulation Runner
-  useEffect(() => {
-    if (!isActive || isPaused) return;
+  // Track incidents we've already shown an alert card for (to avoid duplicates)
+  const seenIncidents = useRef<Set<string>>(new Set());
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    // Start ticks
-    const interval = setInterval(() => {
-      // 1. Increment frame
-      setFrameNumber((prev) => prev + 1);
+  // ────────────────────────────────────────────────────────────────────────────
+  // Status polling — runs while webcam is active
+  // ────────────────────────────────────────────────────────────────────────────
+  const pollStatus = useCallback(async () => {
+    try {
+      const endpoint = cameraSource === "LOCAL" ? "webcam/status" : "ipwebcam/status";
+      const res = await fetch(`${API}/${endpoint}`);
+      if (!res.ok) return;
+      const data = await res.json();
 
-      // 2. Fluctuate metrics
-      setFps(28.5 + Math.random() * 1.5);
-      setInferenceTime(12.8 + Math.random() * 3.4);
-      setConfidence(0.89 + Math.random() * 0.08);
+      setFrameNumber(data.frames_processed ?? 0);
+      setUptimeSeconds(data.uptime_seconds ?? 0);
+      setCameraFps(data.camera_fps ?? 0);
+      setAiFps(data.ai_fps ?? 0);
+      setInferenceTimeMs(data.inference_time_ms ?? 0);
+      setPredictedClass(data.predicted_class ?? "Normal");
+      setConfidence(data.confidence ?? 0);
+      setThreatState(data.threat_state ?? "NORMAL");
+      setAlertStatus(data.alert_status ?? "IDLE");
 
-      // 3. Update tracked person coordinates slightly
-      setPersons((prevPersons) => {
-        if (prevPersons.length === 0) {
-          // Initialize simulation tracks
-          return [
-            {
-              trackId: 1,
-              confidence: 0.932,
-              bbox: [585, 488, 1093, 1076],
-              threatLevel: "Low",
-              distress: false,
-              pose: "standing",
-            },
-            {
-              trackId: 4,
-              confidence: 0.913,
-              bbox: [1464, 220, 2190, 1075],
-              threatLevel: "High",
-              distress: true,
-              pose: "running",
-            }
-          ];
-        }
+      const isThreat: boolean = data.threat_active === true;
+      const incidentId: string | null = data.last_incident_id ?? null;
 
-        // Shift coordinates slightly
-        return prevPersons.map((p) => {
-          const shiftX = Math.floor(Math.random() * 6) - 3;
-          const shiftY = Math.floor(Math.random() * 4) - 2;
-          return {
-            ...p,
-            confidence: Number((0.88 + Math.random() * 0.1).toFixed(3)),
-            bbox: [
-              p.bbox[0] + shiftX,
-              p.bbox[1] + shiftY,
-              p.bbox[2] + shiftX,
-              p.bbox[3] + shiftY
-            ] as [number, number, number, number]
+      setThreatActive(isThreat);
+      setLastIncidentId(incidentId);
+
+      if (isThreat || data.threat_state === "THREAT ACTIVE") {
+        setAlertLevel("Emergency");
+
+        // Inject a real alert card if this is a new incident
+        if (incidentId && !seenIncidents.current.has(incidentId)) {
+          seenIncidents.current.add(incidentId);
+          const timestamp = new Date().toLocaleTimeString(undefined, { hour12: false });
+
+          const newAlert: AlertData = {
+            id: incidentId,
+            time: timestamp,
+            priority: "Emergency",
+            desc: `Violence detected (${data.predicted_class} ${data.confidence}%). Incident: ${incidentId}. Emergency email dispatched with video evidence.`,
+            status: "EMAIL DISPATCHED",
           };
-        });
-      });
-    }, 200);
+          setAlerts((prev) => [newAlert, ...prev.slice(0, 5)]);
 
-    return () => clearInterval(interval);
-  }, [isActive, isPaused]);
-
-  // Periodic simulated events injector (Timeline + Alerts)
-  useEffect(() => {
-    if (!isActive || isPaused) return;
-
-    const eventFeed = [
-      { text: "Target track ID 01 registered in sector A", type: "person" },
-      { text: "Action: running detected on Track ID 04", type: "distress" },
-      { text: "Critical: physical punching anomaly detected", type: "violence" },
-      { text: "High-priority warning dispatched to terminal L1", type: "alert" },
-      { text: "CCTV feed stream latency synchronized", type: "system" }
-    ];
-
-    const alertsFeed = [
-      { priority: "Warning", desc: "Suspicious physical posturing on Track ID 01", status: "PENDING" },
-      { priority: "Emergency", desc: "Assault anomaly detected on Camera 04 Sector B", status: "ACTIVE DISPATCH" },
-      { priority: "Critical", desc: "Sudden rapid acceleration detected in restricted path", status: "ALERT CONFIRMED" }
-    ];
-
-    const timer = setInterval(() => {
-      // Pick random event
-      const randEvent = eventFeed[Math.floor(Math.random() * eventFeed.length)];
-      const timestamp = new Date().toLocaleTimeString(undefined, { hour12: false });
-      
-      const newEvent: TimelineEvent = {
-        id: String(Math.random()),
-        time: timestamp,
-        text: randEvent.text,
-        type: randEvent.type as any
-      };
-
-      setEvents((prev) => [newEvent, ...prev.slice(0, 15)]);
-
-      // 15% chance to spawn an alert
-      if (Math.random() > 0.65) {
-        const randAlert = alertsFeed[Math.floor(Math.random() * alertsFeed.length)];
-        const newAlert: AlertData = {
-          id: String(Math.random()),
-          time: timestamp,
-          priority: randAlert.priority as any,
-          desc: randAlert.desc,
-          status: randAlert.status
-        };
-
-        setAlerts((prev) => [newAlert, ...prev.slice(0, 5)]);
-        setAlertLevel(randAlert.priority as any);
+          const newEvent: TimelineEvent = {
+            id: `evt-${incidentId}`,
+            time: timestamp,
+            text: `⚠ EMERGENCY: ${incidentId} — Email alert dispatched with video clip + snapshot`,
+            type: "violence",
+          };
+          setEvents((prev) => [newEvent, ...prev.slice(0, 15)]);
+        }
+      } else if (data.threat_state === "VIOLENCE SUSPECTED" || data.threat_state === "CONFIRMING") {
+        setAlertLevel("Warning");
+      } else {
+        setAlertLevel("Normal");
       }
-    }, 5000);
+    } catch {
+      // Backend may be starting up — ignore silently
+    }
+  }, [cameraSource]);
 
-    return () => clearInterval(timer);
-  }, [isActive, isPaused]);
+  // Start / stop polling
+  useEffect(() => {
+    if (isActive && !isPaused) {
+      pollRef.current = setInterval(pollStatus, POLL_INTERVAL_MS);
+      pollStatus(); // immediate first poll
+    } else {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    }
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [isActive, isPaused, pollStatus]);
 
-  // Handle camera start
-  const handleStart = () => {
-    setIsActive(true);
-    setIsPaused(false);
-    setFrameNumber(0);
-    // Initialize default items
-    const timestamp = new Date().toLocaleTimeString(undefined, { hour12: false });
-    setEvents([
-      { id: "1", time: timestamp, text: "AI inference engines started successfully", type: "system" },
-      { id: "2", time: timestamp, text: "CCTV Camera Feed 04 initialized", type: "system" }
-    ]);
-    setPersons([
-      { trackId: 1, confidence: 0.93, bbox: [585, 488, 1093, 1076], threatLevel: "Low", distress: false, pose: "standing" },
-      { trackId: 4, confidence: 0.91, bbox: [1464, 220, 2190, 1075], threatLevel: "High", distress: true, pose: "running" }
-    ]);
+  // ────────────────────────────────────────────────────────────────────────────
+  // Handlers
+  // ────────────────────────────────────────────────────────────────────────────
+  const handleStart = async () => {
+    setIsLoading(true);
+    try {
+      const endpoint = cameraSource === "LOCAL" ? "webcam/start" : "ipwebcam/start";
+      const body = cameraSource === "IP" ? JSON.stringify({ url: ipUrl }) : undefined;
+      const headers = cameraSource === "IP" ? { "Content-Type": "application/json" } : undefined;
+      
+      const res = await fetch(`${API}/${endpoint}`, { 
+        method: "POST",
+        headers,
+        body
+      });
+      const data = await res.json();
+      if (res.ok && (data.status === "started" || data.status === "already_running")) {
+        setIsActive(true);
+        setIsPaused(false);
+        setFrameNumber(0);
+        setAlertLevel("Normal");
+        setThreatActive(false);
+        seenIncidents.current.clear();
+
+        const timestamp = new Date().toLocaleTimeString(undefined, { hour12: false });
+        const camName = cameraSource === "LOCAL" ? "WEBCAM-01" : "IP-WEBCAM-01";
+        setEvents([
+          { id: "boot-1", time: timestamp, text: `${cameraSource === "LOCAL" ? "Webcam" : "IP Camera"} AI inference engines started successfully`, type: "system" },
+          { id: "boot-2", time: timestamp, text: `${camName} initialized — VideoMAE Model 1 active`, type: "system" },
+        ]);
+        setAlerts([]);
+      } else {
+        const msg = data.detail || "Failed to start webcam.";
+        addSystemEvent(`ERROR: ${msg}`, "alert");
+      }
+    } catch (err) {
+      addSystemEvent("ERROR: Could not reach backend. Is the server running?", "alert");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Handle camera stop
-  const handleStop = () => {
-    setIsActive(false);
-    setIsPaused(false);
-    setPersons([]);
-    setEvents([]);
-    setAlerts([]);
-    setAlertLevel("Normal");
+  const handleStop = async () => {
+    setIsLoading(true);
+    try {
+      const endpoint = cameraSource === "LOCAL" ? "webcam/stop" : "ipwebcam/stop";
+      await fetch(`${API}/${endpoint}`, { method: "POST" });
+    } catch {
+      // ignore
+    } finally {
+      setIsActive(false);
+      setIsPaused(false);
+      setThreatActive(false);
+      setAlertLevel("Normal");
+      setFrameNumber(0);
+      setUptimeSeconds(0);
+      setPersons_noop();
+      setIsLoading(false);
+    }
   };
 
-  // Handle camera pause
   const handlePause = () => {
     setIsPaused((prev) => !prev);
   };
 
-  // Dismiss an alert
   const handleDismissAlert = (id: string) => {
     setAlerts((prev) => prev.filter((a) => a.id !== id));
-    if (alerts.length <= 1) {
-      setAlertLevel("Normal");
-    }
+    if (alerts.length <= 1) setAlertLevel("Normal");
+  };
+
+  // Helper to add system events
+  const addSystemEvent = (text: string, type: TimelineEvent["type"]) => {
+    const timestamp = new Date().toLocaleTimeString(undefined, { hour12: false });
+    setEvents((prev) => [{ id: String(Date.now()), time: timestamp, text, type }, ...prev.slice(0, 15)]);
+  };
+
+  // No-op setter to satisfy TypeScript without having persons state change
+  const setPersons_noop = () => {};
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Uptime formatter
+  // ────────────────────────────────────────────────────────────────────────────
+  const formatUptime = (seconds: number): string => {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}m ${s.toString().padStart(2, "0")}s`;
   };
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 select-none">
-      
-      {/* COLUMN 1 & 2: Camera Viewport, Timeline controls */}
+
+      {/* COLUMN 1 & 2: Camera Viewport + Controls + Timeline */}
       <div className="xl:col-span-3 space-y-6 flex flex-col">
-        
-        {/* Live Viewport Panel */}
-        <LiveCamera isActive={isActive} isPaused={isPaused} fps={fps} />
+
+        <LiveCamera
+          isActive={isActive}
+          isPaused={isPaused}
+          fps={cameraFps || 20}
+          streamUrl={isActive && !isPaused ? `${API}/${cameraSource === "LOCAL" ? "webcam" : "ipwebcam"}/stream` : undefined}
+          threatActive={threatActive}
+        />
 
         {/* Camera control bar */}
-        <CameraControls 
-          isActive={isActive} 
-          isPaused={isPaused} 
-          onStart={handleStart} 
-          onStop={handleStop} 
-          onPause={handlePause} 
+        <CameraControls
+          isActive={isActive}
+          isPaused={isPaused}
+          cameraSource={cameraSource}
+          setCameraSource={setCameraSource}
+          ipUrl={ipUrl}
+          setIpUrl={setIpUrl}
+          onStart={isLoading ? () => {} : handleStart}
+          onStop={isLoading ? () => {} : handleStop}
+          onPause={handlePause}
         />
 
         {/* Event Logs Timeline */}
         <Timeline events={events} />
-
       </div>
 
       {/* COLUMN 3: Diagnostics Panel */}
       <div className="space-y-6 flex flex-col">
-        
+
         {/* Detection Metrics Stats */}
         <div className="glass-panel p-4 rounded-xl border border-slate-900 flex flex-col gap-3">
           <h3 className="font-bold text-xs uppercase tracking-wider text-white flex items-center gap-2">
             <FiCpu className="text-cyan-400" /> AI Detection Terminal
           </h3>
-          
+
           <div className="space-y-3 pt-2">
             <div className="flex justify-between items-center py-2 border-b border-slate-900/60 text-xs">
-              <span className="font-semibold text-slate-500 uppercase tracking-wider">Detection Status</span>
+              <span className="font-semibold text-slate-500 uppercase tracking-wider">Threat State</span>
               {isActive && !isPaused ? (
-                <span className="font-bold text-emerald-400 animate-pulse">ANALYZING STREAM</span>
+                threatState === "THREAT ACTIVE" ? (
+                  <span className="font-bold text-red-400 animate-pulse">⚠ THREAT ACTIVE</span>
+                ) : threatState === "CONFIRMING" || threatState === "VIOLENCE SUSPECTED" ? (
+                  <span className="font-bold text-amber-400 animate-pulse">⚡ {threatState}</span>
+                ) : (
+                  <span className="font-bold text-emerald-400 animate-pulse">NORMAL</span>
+                )
               ) : (
                 <span className="font-bold text-slate-500">STANDBY</span>
               )}
             </div>
 
             <div className="flex justify-between items-center py-2 border-b border-slate-900/60 text-xs">
-              <span className="font-semibold text-slate-500 uppercase tracking-wider">Frames Scanned</span>
-              <span className="font-mono font-bold text-slate-100">{frameNumber}</span>
-            </div>
-
-            <div className="flex justify-between items-center py-2 border-b border-slate-900/60 text-xs">
-              <span className="font-semibold text-slate-500 uppercase tracking-wider">System Latency</span>
-              <span className="font-mono font-bold text-slate-100">
-                {isActive && !isPaused ? `${inferenceTime.toFixed(1)} ms` : "0.0 ms"}
+              <span className="font-semibold text-slate-500 uppercase tracking-wider">Activity / Class</span>
+              <span className={`font-mono font-bold ${
+                predictedClass !== "Normal" ? "text-red-400" : "text-emerald-400"
+              }`}>
+                {predictedClass} ({confidence.toFixed(1)}%)
               </span>
             </div>
 
             <div className="flex justify-between items-center py-2 border-b border-slate-900/60 text-xs">
-              <span className="font-semibold text-slate-500 uppercase tracking-wider">Average Confidence</span>
-              <span className="font-mono font-bold text-cyan-400 glow-cyan">
-                {isActive && !isPaused ? `${(confidence * 100).toFixed(1)}%` : "0.0%"}
+              <span className="font-semibold text-slate-500 uppercase tracking-wider">Camera FPS / AI FPS</span>
+              <span className="font-mono font-bold text-slate-100">
+                {cameraFps.toFixed(1)} FPS / {aiFps.toFixed(1)} FPS
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center py-2 border-b border-slate-900/60 text-xs">
+              <span className="font-semibold text-slate-500 uppercase tracking-wider">Inference Latency</span>
+              <span className="font-mono font-bold text-cyan-400">
+                {inferenceTimeMs.toFixed(0)} ms
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center py-2 border-b border-slate-900/60 text-xs">
+              <span className="font-semibold text-slate-500 uppercase tracking-wider">Alert / Evidence</span>
+              <span className={`font-mono font-bold text-[11px] ${
+                alertStatus === "SENT" ? "text-emerald-400" : alertStatus === "DISPATCHING" ? "text-amber-400" : "text-slate-400"
+              }`}>
+                {alertStatus}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center py-2 border-b border-slate-900/60 text-xs">
+              <span className="font-semibold text-slate-500 uppercase tracking-wider">Frames Scanned</span>
+              <span className="font-mono font-bold text-slate-100">{frameNumber.toLocaleString()}</span>
+            </div>
+
+            <div className="flex justify-between items-center py-2 border-b border-slate-900/60 text-xs">
+              <span className="font-semibold text-slate-500 uppercase tracking-wider">Uptime</span>
+              <span className="font-mono font-bold text-slate-100">
+                {isActive ? formatUptime(uptimeSeconds) : "—"}
               </span>
             </div>
 
             <div className="flex justify-between items-center py-2 text-xs">
-              <span className="font-semibold text-slate-500 uppercase tracking-wider">Alert Index</span>
-              <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${
-                alertLevel === "Emergency"
-                  ? "bg-red-950/20 text-red-400 border border-red-500/20"
-                  : alertLevel === "Critical"
-                  ? "bg-orange-950/20 text-orange-400 border border-orange-500/20"
-                  : alertLevel === "Warning"
-                  ? "bg-amber-950/20 text-amber-400 border border-amber-500/20"
-                  : "bg-slate-900 text-slate-400"
-              }`}>
-                {alertLevel}
+              <span className="font-semibold text-slate-500 uppercase tracking-wider">Last Incident</span>
+              <span className="font-mono font-bold text-amber-400 text-[10px]">
+                {lastIncidentId ?? "None"}
               </span>
             </div>
           </div>
@@ -257,12 +324,11 @@ const LiveDetection: React.FC = () => {
 
         {/* Model Pipeline statuses */}
         <SystemStatusCard />
-
       </div>
 
-      {/* COLUMN 4: Active Targets list & Alerts List */}
+      {/* COLUMN 4: Active Targets & Alerts */}
       <div className="xl:col-span-4 grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-        
+
         {/* Bounding box target list */}
         <div className="flex flex-col gap-4">
           <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 px-1">
@@ -276,7 +342,9 @@ const LiveDetection: React.FC = () => {
             </div>
           ) : (
             <div className="glass-panel p-8 rounded-xl border border-slate-900 text-xs text-slate-500 italic text-center">
-              No active targets locked. Initialize feed analysis.
+              {isActive
+                ? "Person tracking results will appear here during threat events."
+                : "No active targets locked. Initialize feed analysis."}
             </div>
           )}
         </div>
@@ -298,7 +366,6 @@ const LiveDetection: React.FC = () => {
         </div>
 
       </div>
-
     </div>
   );
 };

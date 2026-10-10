@@ -23,10 +23,20 @@ const api = axios.create({
 
 export const uploadAndAnalyzeVideo = async (
   file: File,
-  onUploadProgress?: (progressEvent: any) => void
+  onUploadProgress?: (progressEvent: any) => void,
+  locationData?: {
+    latitude?: number | null;
+    longitude?: number | null;
+    accuracy?: number | null;
+    timestamp?: number | null;
+  }
 ) => {
   const formData = new FormData();
   formData.append("file", file);
+  if (locationData?.latitude != null) formData.append("latitude", String(locationData.latitude));
+  if (locationData?.longitude != null) formData.append("longitude", String(locationData.longitude));
+  if (locationData?.accuracy != null) formData.append("accuracy", String(locationData.accuracy));
+  if (locationData?.timestamp != null) formData.append("timestamp", String(locationData.timestamp));
 
   const response = await api.post("/predict", formData, {
     headers: {
@@ -35,6 +45,11 @@ export const uploadAndAnalyzeVideo = async (
     onUploadProgress,
   });
 
+  return response.data;
+};
+
+export const fetchHistory = async (skip: number = 0, limit: number = 50) => {
+  const response = await api.get(`/api/v1/history?skip=${skip}&limit=${limit}`);
   return response.data;
 };
 

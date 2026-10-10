@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { DashboardProvider } from './contexts/DashboardContext'
 import { Toaster } from 'react-hot-toast'
+import { LocationProvider } from './contexts/LocationContext'
 import RouteLoader from './components/common/RouteLoader'
 
 // Layout & Authentication Pages
@@ -34,8 +35,9 @@ function App() {
 
   return (
     <ThemeProvider>
-      <DashboardProvider>
-        <AuthProvider>
+      <LocationProvider>
+        <DashboardProvider>
+          <AuthProvider>
           {/* Global styled notifications toaster */}
           <Toaster 
             position="top-right" 
@@ -85,7 +87,8 @@ function App() {
           </BrowserRouter>
         </AuthProvider>
       </DashboardProvider>
-    </ThemeProvider>
+    </LocationProvider>
+  </ThemeProvider>
   )
 }
 

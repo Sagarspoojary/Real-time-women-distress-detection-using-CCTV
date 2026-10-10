@@ -116,6 +116,15 @@ class WomenDistressPipeline:
             "frames_processed": latest_frame
         }
 
+        # Set distress flag on tracked persons if AI models detected violence/distress
+        has_distress = (
+            (model1 and model1.get("prediction") in {"Violence", "Assault"}) or
+            (model2 and model2.get("prediction") in {"Punching", "Violence", "Fall", "SOS"})
+        )
+        if has_distress:
+            for person in people:
+                person.distress = True
+
         result["persons"] = [
             vars(person)
             for person in people
@@ -127,4 +136,43 @@ class WomenDistressPipeline:
 
         result["status"] = "Distress Detected"
 
+        return result
+
+    def process_videomae(self, raw_frames):
+        """Processes 16 BGR numpy frames directly from live camera stream."""
+        import cv2
+        rgb_frames = [cv2.cvtColor(f, cv2.COLOR_BGR2RGB) for f in raw_frames]
+
+        model1 = self.model1.predict_frames(rgb_frames)
+        model2 = self.model2.predict_frames(rgb_frames)
+
+        result = {
+            "model1": model1,
+            "model2": model2,
+            "status": "No distress detected"
+        }
+
+        if model1["prediction"] == "Normal" and model2["prediction"] == "Normal":
+            return result
+
+        result["status"] = "Distress Detected"
+        return result
+
+    def process_yolo(self, raw_frame, frame_count, has_distress):
+        """Runs YOLO person detection and tracking on a single frame."""
+        annotated_frame = self.model3.detect_on_frame(raw_frame, self.person_manager, frame_count)
+        
+        people = self.person_manager.get_all()
+        
+        valid_people = [p for p in people if p.confidence >= 0.45]
+
+        if has_distress:
+            for person in valid_people:
+                person.distress = True
+
+        result = {
+            "model3": {"people_detected": len(valid_people), "frames_processed": frame_count},
+            "persons": [vars(person) for person in valid_people],
+            "annotated_frame": annotated_frame,
+        }
         return result

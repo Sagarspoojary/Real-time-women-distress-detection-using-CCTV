@@ -20,6 +20,7 @@ interface HistoryItem {
   model3?: { people_detected: number; frames_processed: number };
   persons?: any[];
   status?: string;
+  location?: { latitude: number; longitude: number; accuracy?: number };
 }
 
 interface HistoryDetailModalProps {
@@ -118,8 +119,19 @@ const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({
                     {/* Processed video player */}
                     <div className="flex flex-col gap-2">
                       <h4 className="font-bold text-[10px] uppercase tracking-wider text-cyan-400 glow-cyan">Processed AI output Stream</h4>
-                      <div className="relative aspect-video bg-slate-950 border border-cyan-500/20 rounded-xl overflow-hidden shadow-lg">
-                        <video src={processedUrl} controls className="w-full h-full object-contain" />
+                      <div className="relative aspect-video bg-slate-950 border border-cyan-500/20 rounded-xl overflow-hidden shadow-lg flex items-center justify-center">
+                        <video 
+                          src={processedUrl} 
+                          controls 
+                          className="w-full h-full object-contain z-10" 
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 z-0">
+                          <FiInfo className="text-3xl mb-2 opacity-50" />
+                          <span className="text-sm font-medium">Evidence Expired or Unavailable</span>
+                        </div>
                       </div>
                     </div>
 
@@ -192,6 +204,31 @@ const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({
                         <span className="text-slate-400">Frames Ticked</span>
                         <span className="font-mono font-bold text-white">{item.model3?.frames_processed || 0}</span>
                       </div>
+                    </div>
+                    
+                    {/* Location Context */}
+                    <div className="glass-panel p-4 rounded-xl border border-slate-900 space-y-2 text-xs">
+                      <span className="text-[9px] font-bold text-slate-500 uppercase block">Camera Location</span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Latitude</span>
+                        <span className="font-mono text-white">{item.location?.latitude != null ? item.location.latitude.toFixed(6) : "N/A"}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Longitude</span>
+                        <span className="font-mono text-white">{item.location?.longitude != null ? item.location.longitude.toFixed(6) : "N/A"}</span>
+                      </div>
+                      {item.location?.latitude != null && item.location?.longitude != null && (
+                        <div className="pt-2 border-t border-slate-800">
+                          <a 
+                            href={`https://www.google.com/maps?q=${item.location.latitude},${item.location.longitude}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[10px] text-cyan-400 hover:text-cyan-300 font-bold uppercase tracking-wider block text-center"
+                          >
+                            Open in Google Maps ↗
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
 

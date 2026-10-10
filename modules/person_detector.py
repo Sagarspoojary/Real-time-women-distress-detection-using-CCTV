@@ -232,12 +232,16 @@ class PersonDetector:
                     # Pass the full frame + raw YOLO bbox to the classifier.
                     # The classifier handles padded cropping, quality gates,
                     # and temporal voting internally.
-                    gender_val, gender_conf = self.gender_classifier.classify_gender(
-                        frame=result.orig_img,
-                        x1=x1, y1=y1, x2=x2, y2=y2,
-                        track_id=track_id,
-                        frame_number=frame_number,
-                    )
+                    if existing_person is not None and frame_number % 5 != 0:
+                        gender_val = existing_person.gender
+                        gender_conf = existing_person.gender_confidence
+                    else:
+                        gender_val, gender_conf = self.gender_classifier.classify_gender(
+                            frame=result.orig_img,
+                            x1=x1, y1=y1, x2=x2, y2=y2,
+                            track_id=track_id,
+                            frame_number=frame_number,
+                        )
 
                     # Register/update detection in person manager
                     person_manager.update(
@@ -394,3 +398,169 @@ class PersonDetector:
                     os.rename(temp_output, final_output)
 
         return frame_number
+
+    def detect_on_frame(self, frame, person_manager, frame_number):
+        # Predict on a single frame without writing to video
+        results = self.model.track(
+            source=frame,
+            tracker="modules/custom_bytetrack.yaml",
+            persist=True,
+            classes=[0],
+            conf=self.CONFIDENCE_THRESHOLD,
+            iou=self.IOU_THRESHOLD,
+            verbose=False,
+        )
+        
+        if not results:
+            return frame
+
+        result = results[0]
+        H, W = result.orig_shape
+        annotated_frame = result.orig_img.copy()
+
+        weapon_detections = self.weapon_detector.detect_weapons(annotated_frame, "live")
+
+        if result.boxes is not None:
+            ids = result.boxes.id if result.boxes.id is not None else [i for i in range(len(result.boxes))]
+
+            for i, box in enumerate(result.boxes):
+                track_id = int(ids[i])
+                confidence = float(box.conf[0])
+                x1, y1, x2, y2 = box.xyxy[0].tolist()
+
+                width_box = x2 - x1
+                height_box = y2 - y1
+
+                if width_box < self.MIN_WIDTH or height_box < self.MIN_HEIGHT:
+                    continue
+
+                if x1 < self.BORDER_MARGIN or y1 < self.BORDER_MARGIN or x2 > W - self.BORDER_MARGIN or y2 > H - self.BORDER_MARGIN:
+                    continue
+
+                center = (int((x1 + x2) / 2), int((y1 + y2) / 2))
+
+                weapon_detected = False
+                weapon_type = None
+                weapon_confidence = 0.0
+
+                p_center_x = (x1 + x2) / 2
+                p_center_y = (y1 + y2) / 2
+                min_dist = float("inf")
+                associated_weapon = None
+
+                for w_det in weapon_detections:
+                    wx1, wy1, wx2, wy2 = w_det["bbox"]
+                    w_center_x = (wx1 + wx2) / 2
+                    w_center_y = (wy1 + wy2) / 2
+
+                    dist = ((p_center_x - w_center_x) ** 2 + (p_center_y - w_center_y) ** 2) ** 0.5
+                    max_allowed_dist = max(width_box, height_box) * 0.8
+
+                    if dist < max_allowed_dist and dist < min_dist:
+                        min_dist = dist
+                        associated_weapon = w_det
+
+                if associated_weapon is not None:
+                    weapon_detected = True
+                    weapon_type = associated_weapon["type"]
+                    weapon_confidence = associated_weapon["confidence"]
+                    associated_weapon["associated_track_id"] = track_id
+
+                existing_person = person_manager.people.get(track_id)
+                if existing_person is not None and getattr(existing_person, 'is_known_person', False) and getattr(existing_person, 'face_confidence', 0.0) >= 0.8:
+                    face_name = existing_person.recognized_name
+                    face_conf = existing_person.face_confidence
+                    face_status = existing_person.face_status
+                    face_thumb = existing_person.face_thumbnail
+                    is_known_person = True
+                else:
+                    ix1, iy1, ix2, iy2 = max(0, int(x1)), max(0, int(y1)), min(W, int(x2)), min(H, int(y2))
+                    person_crop = result.orig_img[iy1:iy2, ix1:ix2]
+                    face_name, face_conf, face_status, face_thumb, is_known_person = self.face_recognizer.recognize_face(
+                        person_crop, track_id, "live_stream"
+                    )
+
+                if existing_person is not None and frame_number % 5 != 0:
+                    gender_val = existing_person.gender
+                    gender_conf = existing_person.gender_confidence
+                else:
+                    gender_val, gender_conf = self.gender_classifier.classify_gender(
+                        frame=result.orig_img,
+                        x1=x1, y1=y1, x2=x2, y2=y2,
+                        track_id=track_id,
+                        frame_number=frame_number,
+                    )
+
+                person_manager.update(
+                    track_id=track_id,
+                    confidence=round(confidence, 3),
+                    bbox=[round(x1, 2), round(y1, 2), round(x2, 2), round(y2, 2)],
+                    center=center,
+                    frame_number=frame_number,
+                    weapon_detected=weapon_detected,
+                    weapon_type=weapon_type,
+                    weapon_confidence=round(weapon_confidence, 3),
+                    recognized_name=face_name,
+                    face_confidence=round(face_conf, 3),
+                    face_status=face_status,
+                    face_thumbnail=face_thumb,
+                    is_known_person=is_known_person,
+                    gender=gender_val,
+                    gender_confidence=round(gender_conf, 3)
+                )
+
+                person = person_manager.people.get(track_id)
+                if person is not None:
+                    if len(person.track_history) >= 3 and confidence >= 0.45:
+                        weapon_disp = person.weapon_type if person.weapon_detected else "None"
+                        threat_disp = "High" if (person.distress or person.weapon_detected) else "Low"
+                        self.draw_premium_box(
+                            annotated_frame, x1, y1, x2, y2,
+                            track_id=track_id,
+                            conf=confidence,
+                            gender=person.gender,
+                            weapon=weapon_disp,
+                            pose=person.pose,
+                            threat=threat_disp,
+                            identity=person.identity if person.identity else "Unknown",
+                            gender_confidence=person.gender_confidence,
+                        )
+
+        # Draw weapon bounding boxes
+        for w_det in weapon_detections:
+            wx1, wy1, wx2, wy2 = [int(coord) for coord in w_det["bbox"]]
+            conf = w_det["confidence"]
+            w_type = w_det["type"]
+            cat = w_det["category"]
+            owner_id = w_det.get("associated_track_id", "Unknown")
+
+            if cat == "Firearms":
+                color = (0, 0, 255)
+            elif cat == "Sharp Weapons":
+                color = (0, 165, 255)
+            else:
+                color = (255, 255, 0)
+
+            cv2.rectangle(annotated_frame, (wx1, wy1), (wx2, wy2), color, 2)
+            tag_y = max(10, wy1 - 18)
+            cv2.rectangle(annotated_frame, (wx1, tag_y), (wx1 + 100, tag_y + 15), color, -1)
+            cv2.putText(annotated_frame, f"{w_type} {conf:.0%}", (wx1 + 4, tag_y + 11), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 0), 1, cv2.LINE_AA)
+            
+            owner_y = wy2 + 12
+            if owner_y < annotated_frame.shape[0]:
+                cv2.putText(annotated_frame, f"Owner: ID {owner_id}" if owner_id != "Unknown" else "Owner: Unknown", (wx1, owner_y), cv2.FONT_HERSHEY_SIMPLEX, 0.35, color, 1, cv2.LINE_AA)
+
+        stale_ids = person_manager.remove_stale(frame_number)
+        for stale_id in stale_ids:
+            self.gender_classifier.reset_track(stale_id)
+
+        hud_overlay = annotated_frame.copy()
+        cv2.rectangle(hud_overlay, (10, 10), (220, 90), (15, 15, 15), -1)
+        cv2.addWeighted(hud_overlay, 0.75, annotated_frame, 0.25, 0, annotated_frame)
+        cv2.rectangle(annotated_frame, (10, 10), (220, 90), (255, 180, 50), 1)
+
+        cv2.putText(annotated_frame, "DETECTION SYSTEM ACTIVE", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 180, 50), 1, cv2.LINE_AA)
+        cv2.putText(annotated_frame, f"Frame: {frame_number}", (20, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
+        cv2.putText(annotated_frame, f"Active Tracks: {person_manager.count()}", (20, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
+
+        return annotated_frame
