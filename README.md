@@ -320,4 +320,4 @@ Male distress, normal activity, walking, and running do NOT trigger alerts.
 
 ## 📄 License
 
-This project is for academic and research purposes
+This project is for academic and research purposes.
