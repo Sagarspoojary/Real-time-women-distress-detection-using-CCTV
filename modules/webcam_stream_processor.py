@@ -306,12 +306,32 @@ class WebcamStreamProcessor:
             # TRIGGER LOGIC
             person_count = result.get("model3", {}).get("people_detected", len(self._latest_persons))
             if person_count >= TRIGGER_PERSON_COUNT:
+                now_t = time.time()
                 if self._trigger_start_time == 0.0:
-                    self._trigger_start_time = time.time()
-                elif time.time() - self._trigger_start_time >= TRIGGER_PERSISTENCE_SECONDS:
-                    self._triggered_clip_recorder.trigger()
+                    self._trigger_start_time = now_t
+                    import uuid
+                    self._current_trigger_corr_id = uuid.uuid4().hex[:8]
+                    formatted_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(now_t))
+                    logger.info(
+                        f"[CAMERA] [{self.camera_id}] [{self._current_trigger_corr_id}] Multiple persons detected ({person_count} >= {TRIGGER_PERSON_COUNT}) "
+                        f"at {formatted_time}. Persistence timer started ({TRIGGER_PERSISTENCE_SECONDS}s required)."
+                    )
+                elif now_t - self._trigger_start_time >= TRIGGER_PERSISTENCE_SECONDS:
+                    duration = now_t - self._trigger_start_time
+                    import uuid
+                    corr_id = getattr(self, "_current_trigger_corr_id", None) or uuid.uuid4().hex[:8]
+                    logger.warning(
+                        f"[CAMERA] [{self.camera_id}] [{corr_id}] Trigger condition CONFIRMED: {person_count} persons sustained for {duration:.1f}s. "
+                        f"Activating triggered clip recording."
+                    )
+                    self._triggered_clip_recorder.trigger(source=self.camera_id, correlation_id=corr_id)
                     self._trigger_start_time = 0.0  # Reset to require new persistence
             else:
+                if self._trigger_start_time > 0.0:
+                    logger.debug(
+                        f"[CAMERA] [{self.camera_id}] Person count dropped ({person_count} < {TRIGGER_PERSON_COUNT}). "
+                        f"Persistence timer reset."
+                    )
                 self._trigger_start_time = 0.0
                 
         except Exception as e:

@@ -10,7 +10,8 @@ import {
   FiEye, 
   FiHelpCircle, 
   FiInfo,
-  FiUsers
+  FiUsers,
+  FiCamera
 } from "react-icons/fi";
 
 export type SettingsTab = 
@@ -19,6 +20,7 @@ export type SettingsTab =
   | "application" 
   | "models" 
   | "backend" 
+  | "camera"
   | "notifications" 
   | "security" 
   | "appearance" 
@@ -41,6 +43,7 @@ const SettingsSidebar: React.FC<SettingsSidebarProps> = ({
     { id: "application", label: "Application", icon: <FiSliders /> },
     { id: "models", label: "AI Models", icon: <FiCpu /> },
     { id: "backend", label: "Backend", icon: <FiServer /> },
+    { id: "camera", label: "Camera Settings", icon: <FiCamera /> },
     { id: "notifications", label: "Notifications", icon: <FiBell /> },
     { id: "security", label: "Security", icon: <FiShield /> },
     { id: "appearance", label: "Appearance", icon: <FiEye /> },

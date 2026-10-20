@@ -24,8 +24,12 @@ const BackendStatusCard: React.FC = () => {
     }
     const startTime = performance.now();
     try {
-      // Ping the root health-check route
-      await axios.get(apiUrl, { timeout: 3000 });
+      // Ping the health-check route with fallback
+      try {
+        await axios.get(`${apiUrl}/health`, { timeout: 3000 });
+      } catch {
+        await axios.get(apiUrl, { timeout: 3000 });
+      }
       const endTime = performance.now();
       
       setLatency(Math.round(endTime - startTime));
@@ -117,7 +121,7 @@ const BackendStatusCard: React.FC = () => {
               type="text"
               value={apiUrl}
               onChange={(e) => setApiUrl(e.target.value)}
-              placeholder="http://localhost:8000"
+              placeholder="http://127.0.0.1:8000"
               className="flex-grow px-3 py-2 rounded-lg glass-input text-white font-mono font-bold text-xs"
             />
             <button

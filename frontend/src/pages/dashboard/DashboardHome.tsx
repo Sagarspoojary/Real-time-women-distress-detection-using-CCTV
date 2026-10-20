@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { API_BASE_URL } from "../../services/api";
+import OutputsGallery from "../../components/dashboard/OutputsGallery";
 import axios from "axios";
 import { 
   AreaChart, 
@@ -64,8 +65,11 @@ const DashboardHome: React.FC = () => {
     const checkBackend = async () => {
       const start = Date.now();
       try {
-        // Fast ping GET request to root or /docs
-        await axios.get(API_BASE_URL, { timeout: 4000 });
+        try {
+          await axios.get(`${API_BASE_URL}/health`, { timeout: 3000 });
+        } catch {
+          await axios.get(API_BASE_URL, { timeout: 3000 });
+        }
         setBackendConnected(true);
         setPingLatency(Date.now() - start);
       } catch (err) {
@@ -179,6 +183,12 @@ const DashboardHome: React.FC = () => {
             className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-200 text-xs font-bold rounded-lg transition-all"
           >
             <FiSettings className="text-xs" /> Config Settings
+          </Link>
+          <Link
+            to="/dashboard/outputs-vault"
+            className="flex items-center gap-2 px-3 py-2 bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-slate-200 hover:text-cyan-400 text-xs font-bold rounded-lg transition-all"
+          >
+            <FiLayers className="text-xs text-cyan-400" /> Outputs Vault
           </Link>
         </div>
       </div>
@@ -387,6 +397,22 @@ const DashboardHome: React.FC = () => {
           </div>
         </div>
 
+      </div>
+
+      {/* SECTION: Surveillance Outputs & Evidence Vault (Whole Images, Triggered Clips, Debug Gender) */}
+      <div id="outputs-vault" className="scroll-mt-6 space-y-2">
+        <div className="flex justify-between items-center px-1">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+            <FiLayers className="text-cyan-400" /> Surveillance Outputs Preview
+          </span>
+          <Link
+            to="/dashboard/outputs-vault"
+            className="text-xs font-bold text-cyan-400 hover:text-cyan-300 flex items-center gap-1 hover:underline"
+          >
+            Open Dedicated Vault Page &rarr;
+          </Link>
+        </div>
+        <OutputsGallery />
       </div>
 
       {/* Lower Row: Latest Analysis & Performance diagnostics */}

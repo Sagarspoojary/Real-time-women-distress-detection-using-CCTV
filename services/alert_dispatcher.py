@@ -34,7 +34,9 @@ ALERT_CONFIDENCE_THRESHOLD: float = float(os.environ.get("ALERT_CONFIDENCE_THRES
 SMS_ALERT_THRESHOLD: float = float(os.environ.get("SMS_ALERT_THRESHOLD", "75.0"))
 VOICE_CALL_THRESHOLD: float = float(os.environ.get("VOICE_CALL_THRESHOLD", "90.0"))
 
-ENABLE_SMS_ALERTS: bool = os.environ.get("ENABLE_SMS_ALERTS", "false").lower() in ("true", "1", "yes")
+ENABLE_SMS_ALERTS: bool = (
+    os.environ.get("ENABLE_SMS_ALERTS") or os.environ.get("SMS_ENABLED") or "false"
+).lower() in ("true", "1", "yes")
 ENABLE_CALL_ALERTS: bool = os.environ.get("ENABLE_CALL_ALERTS", "false").lower() in ("true", "1", "yes")
 
 ALERT_COOLDOWN_SECONDS: int = int(os.environ.get("ALERT_COOLDOWN_SECONDS", "300"))
@@ -327,8 +329,13 @@ class AlertDispatcher:
 
             self._cooldown_registry[source_key] = now
 
+        t_confirmed = time.time()
         incident_id = f"INC-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:6].upper()}"
         risk_level = _compute_risk_level(confidence, threat_type)
+        logger.info(
+            f"[AlertDispatcher] Incident confirmed at {datetime.fromtimestamp(t_confirmed, tz=timezone.utc).isoformat()} | "
+            f"ID={incident_id} | Threat: {threat_type} ({confidence:.1f}%) | Risk: {risk_level} | Source: {source_key}"
+        )
 
         job = {
             "incident_id": incident_id,
@@ -343,7 +350,8 @@ class AlertDispatcher:
             "persons": persons,
             "video_path": video_path,
             "snapshot_path": snapshot_path,
-            "location_data": location_data or {}
+            "location_data": location_data or {},
+            "t_confirmed": t_confirmed,
         }
         
         # Persist incident to DB here before dispatch
@@ -361,6 +369,12 @@ class AlertDispatcher:
                     snapshot_path=snapshot_path,
                     location_data=location_data,
                     alert_status="ENQUEUED"
+                )
+                t_persisted = time.time()
+                job["t_persisted"] = t_persisted
+                logger.info(
+                    f"[AlertDispatcher] Incident {incident_id} persisted to database at "
+                    f"{datetime.fromtimestamp(t_persisted, tz=timezone.utc).isoformat()} (persistence elapsed: {(t_persisted - t_confirmed)*1000.0:.1f}ms)"
                 )
                 
                 # Push event to WebSocket queue so frontend can refresh history
@@ -441,10 +455,17 @@ class AlertDispatcher:
             video_attachment = None
 
         results_summary = {"incident_id": incident_id, "email": "SKIPPED", "sms": "SKIPPED", "voice": "SKIPPED"}
+        threads = []
 
-        # 1. EMAIL DISPATCH (Isolated failure)
+        # 1. EMAIL DISPATCH WORKER (Runs concurrently)
         enable_email = os.environ.get("ENABLE_EMAIL_ALERTS", "true").lower() in ("true", "1", "yes")
-        if enable_email and email_recipients:
+        def _dispatch_email():
+            t_email_start = time.perf_counter()
+            t_email_start_wall = time.time()
+            logger.info(
+                f"[AlertDispatcher] [{incident_id}] Email dispatch started at "
+                f"{datetime.fromtimestamp(t_email_start_wall, tz=timezone.utc).isoformat()} to {len(email_recipients)} recipient(s)"
+            )
             html_body = _build_html_email(
                 incident_id=incident_id, timestamp=timestamp, camera_id=ALERT_CAMERA_ID,
                 camera_location=ALERT_CAMERA_LOCATION, threat_type=threat_type, confidence=confidence,
@@ -459,13 +480,41 @@ class AlertDispatcher:
                     recipients=email_recipients, subject=subject, html_body=html_body,
                     snapshot_path=snapshot_path, video_path=video_attachment
                 )
-                results_summary["email"] = f"SUCCESS ({sent} recipients)"
+                elapsed = (time.perf_counter() - t_email_start) * 1000.0
+                t_email_finish_wall = time.time()
+                logger.info(
+                    f"[AlertDispatcher] [{incident_id}] Email dispatch finished at "
+                    f"{datetime.fromtimestamp(t_email_finish_wall, tz=timezone.utc).isoformat()} (elapsed: {elapsed:.1f}ms). "
+                    f"SMTP outcome: SUCCESS ({sent} recipients delivered)"
+                )
+                results_summary["email"] = f"SUCCESS ({sent} recipients, {elapsed:.1f}ms)"
             except Exception as e:
-                logger.error(f"[AlertDispatcher] Email dispatch failed for incident {incident_id}: {e}")
-                results_summary["email"] = f"FAILED: {e}"
+                elapsed = (time.perf_counter() - t_email_start) * 1000.0
+                t_email_finish_wall = time.time()
+                logger.error(
+                    f"[AlertDispatcher] [{incident_id}] Email dispatch failed at "
+                    f"{datetime.fromtimestamp(t_email_finish_wall, tz=timezone.utc).isoformat()} (elapsed: {elapsed:.1f}ms). "
+                    f"SMTP outcome: FAILED ({e})"
+                )
+                results_summary["email"] = f"FAILED: {e} ({elapsed:.1f}ms)"
 
-        # 2. SMS DISPATCH (Isolated failure)
-        if self._sms_service.enabled and confidence >= SMS_ALERT_THRESHOLD:
+        if enable_email and email_recipients:
+            threads.append(threading.Thread(target=_dispatch_email, name=f"email-{incident_id}", daemon=True))
+
+        # 2. SMS DISPATCH WORKER (Runs concurrently - does not wait for SMTP)
+        def _dispatch_sms():
+            t_sms_start = time.perf_counter()
+            t_sms_start_wall = time.time()
+            # Dynamically resolve recipient: custom dashboard setting takes top priority,
+            # falling back to enabled emergency contacts if not set
+            dynamic_sms_target = self._sms_service.get_recipient_number()
+            recipient = dynamic_sms_target or (phone_recipients[0] if phone_recipients else None)
+            masked_recipient = mask_phone_number(recipient) if recipient else "environment-default"
+            logger.info(
+                f"[AlertDispatcher] [{incident_id}] SMS dispatch started at "
+                f"{datetime.fromtimestamp(t_sms_start_wall, tz=timezone.utc).isoformat()} to {masked_recipient}"
+            )
+
             # Build dynamic GPS link if coordinates are available
             lat = location_data.get("latitude")
             lon = location_data.get("longitude")
@@ -488,22 +537,52 @@ class AlertDispatcher:
                 f"Immediate action required."
             )
             try:
-                # If there are phone recipients from EmergencyContactService, we can send to the first one,
-                # or default to the SMS_TO_NUMBER configured in environment.
-                recipient = phone_recipients[0] if phone_recipients else None
-                sms_res = self._sms_service.send_sms(sms_text, to_number=recipient)
-                results_summary["sms"] = "SUCCESS" if sms_res else "FAILED"
+                sms_res = self._sms_service.send_sms(sms_text, to_number=recipient, incident_id=incident_id)
+                elapsed = (time.perf_counter() - t_sms_start) * 1000.0
+                t_sms_finish_wall = time.time()
+                meta = getattr(self._sms_service, "last_result", {})
+                batch_id = meta.get("batch_id", "N/A")
+                status_code = meta.get("status_code", "N/A")
+                if sms_res:
+                    logger.info(
+                        f"[AlertDispatcher] [{incident_id}] SMS dispatch finished at "
+                        f"{datetime.fromtimestamp(t_sms_finish_wall, tz=timezone.utc).isoformat()} (elapsed: {elapsed:.1f}ms). "
+                        f"TextBee HTTP status: {status_code}, Batch ID: {batch_id}. Status: request accepted by TextBee"
+                    )
+                    results_summary["sms"] = f"ACCEPTED (Batch: {batch_id}, {elapsed:.1f}ms)"
+                else:
+                    logger.error(
+                        f"[AlertDispatcher] [{incident_id}] SMS dispatch failed at "
+                        f"{datetime.fromtimestamp(t_sms_finish_wall, tz=timezone.utc).isoformat()} (elapsed: {elapsed:.1f}ms). "
+                        f"TextBee HTTP status: {status_code}. Outcome: FAILED"
+                    )
+                    results_summary["sms"] = f"FAILED ({elapsed:.1f}ms)"
             except Exception as e:
-                logger.error(f"[AlertDispatcher] SMS dispatch failed for incident {incident_id}: {e}")
-                results_summary["sms"] = f"FAILED: {e}"
+                elapsed = (time.perf_counter() - t_sms_start) * 1000.0
+                logger.error(f"[AlertDispatcher] [{incident_id}] SMS dispatch unexpected error: {e}")
+                results_summary["sms"] = f"FAILED: {e} ({elapsed:.1f}ms)"
 
-        # 3. VOICE CALL DISPATCH (Voice removed - logged gracefully via PhoneNotificationService)
-        if phone_recipients and (confidence >= VOICE_CALL_THRESHOLD or threat_type == "Assault" or risk_level == "CRITICAL"):
+        if self._sms_service.enabled and confidence >= SMS_ALERT_THRESHOLD:
+            threads.append(threading.Thread(target=_dispatch_sms, name=f"sms-{incident_id}", daemon=True))
+
+        # 3. VOICE CALL DISPATCH WORKER (Runs concurrently)
+        def _dispatch_voice():
             try:
                 call_res = self._phone_service.trigger_emergency_call(phone_recipients, "Voice call requested")
                 results_summary["voice"] = call_res.get("error", "DISABLED")
             except Exception as e:
                 logger.error(f"[AlertDispatcher] Voice call log error: {e}")
                 results_summary["voice"] = f"DISABLED: {e}"
+
+        if phone_recipients and (confidence >= VOICE_CALL_THRESHOLD or threat_type == "Assault" or risk_level == "CRITICAL"):
+            threads.append(threading.Thread(target=_dispatch_voice, name=f"voice-{incident_id}", daemon=True))
+
+        # Launch all channels concurrently
+        for t in threads:
+            t.start()
+
+        # Await completion of all independent notification channels
+        for t in threads:
+            t.join()
 
         logger.info(f"[AlertDispatcher Summary] Incident {incident_id} Dispatch Results: {results_summary}")

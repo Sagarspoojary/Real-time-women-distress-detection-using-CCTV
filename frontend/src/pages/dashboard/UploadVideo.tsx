@@ -20,7 +20,8 @@ import {
   FiMail,
   FiAlertOctagon,
   FiCheckCircle,
-  FiAlertTriangle
+  FiAlertTriangle,
+  FiShield
 } from "react-icons/fi";
 import { BsBoundingBox } from "react-icons/bs";
 
@@ -48,6 +49,7 @@ const UploadVideo: React.FC = () => {
   const [emailSent, setEmailSent] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isAnalyzingRef = useRef<boolean>(false);
 
   // Handle fake active model text transitions during backend analysis
   useEffect(() => {
@@ -149,8 +151,9 @@ const UploadVideo: React.FC = () => {
 
   // Run AI Analysis request
   const handleAnalyze = async () => {
-    if (!file) return;
+    if (!file || isAnalyzingRef.current || loading) return;
 
+    isAnalyzingRef.current = true;
     setLoading(true);
     setStatusStage("uploading");
     setUploadProgress(0);
@@ -203,6 +206,7 @@ const UploadVideo: React.FC = () => {
       setErrorMsg(errText);
       toast.error("Failed to process security feed.");
     } finally {
+      isAnalyzingRef.current = false;
       setLoading(false);
     }
   };
@@ -347,11 +351,20 @@ const UploadVideo: React.FC = () => {
             </div>
           )}
 
+          {/* Statutory Surveillance Processing Notice */}
+          <div className="p-3 bg-slate-900/40 rounded-xl border border-slate-800/80 text-[11px] text-slate-400 flex items-start gap-2.5">
+            <FiShield className="text-cyan-400 text-sm flex-shrink-0 mt-0.5" />
+            <span>
+              <strong>Legal Notice:</strong> Uploaded video files are processed locally on this server. Ensure you possess lawful authority or consent for footage containing identifiable individuals under India's DPDP Act, 2023. Evidence files are archived in the Outputs Vault and subject to our 7-day automated purge schedule.
+            </span>
+          </div>
+
           {/* Action trigger button */}
-          {file && !loading && statusStage !== "completed" && (
+          {file && !loading && !isAnalyzingRef.current && statusStage !== "completed" && (
             <button
               onClick={handleAnalyze}
-              className="py-3 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider"
+              disabled={loading || isAnalyzingRef.current}
+              className="py-3 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider disabled:opacity-50 disabled:pointer-events-none"
             >
               <FiPlay /> Initialize AI Scan
             </button>

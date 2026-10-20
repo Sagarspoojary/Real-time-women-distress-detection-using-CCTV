@@ -21,16 +21,29 @@ class VideoMAEBase:
 
         self.processor = VideoProcessor()
 
-        # Image processor for VideoMAE
-        self.image_processor = VideoMAEImageProcessor.from_pretrained(
-            "MCG-NJU/videomae-base-finetuned-kinetics"
-        )
+        # Image processor for VideoMAE (prefer local cache to avoid huggingface.co network timeouts)
+        try:
+            self.image_processor = VideoMAEImageProcessor.from_pretrained(
+                "MCG-NJU/videomae-base-finetuned-kinetics",
+                local_files_only=True
+            )
+        except Exception:
+            self.image_processor = VideoMAEImageProcessor.from_pretrained(
+                "MCG-NJU/videomae-base-finetuned-kinetics"
+            )
 
         # Load config and architecture matching target class count directly
-        config = VideoMAEConfig.from_pretrained(
-            "MCG-NJU/videomae-base-finetuned-kinetics",
-            num_labels=len(class_names)
-        )
+        try:
+            config = VideoMAEConfig.from_pretrained(
+                "MCG-NJU/videomae-base-finetuned-kinetics",
+                num_labels=len(class_names),
+                local_files_only=True
+            )
+        except Exception:
+            config = VideoMAEConfig.from_pretrained(
+                "MCG-NJU/videomae-base-finetuned-kinetics",
+                num_labels=len(class_names)
+            )
         self.model = VideoMAEForVideoClassification(config)
 
         checkpoint = torch.load(

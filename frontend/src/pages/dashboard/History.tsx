@@ -11,7 +11,7 @@ import {
   FiPlay,
   FiFileText
 } from "react-icons/fi";
-import { fetchHistory } from "../../services/api";
+import { fetchHistory, API_BASE_URL } from "../../services/api";
 
 interface HistoryItem {
   id: string;
@@ -98,8 +98,6 @@ const History: React.FC = () => {
 
     // WebSocket Setup
     const connectWebSocket = () => {
-      // Use existing API_BASE_URL to derive WS url
-      const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
       const wsUrl = API_BASE_URL.replace(/^http/, 'ws') + "/api/v1/ws/alerts";
       
       ws = new WebSocket(wsUrl);

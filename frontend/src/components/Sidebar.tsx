@@ -10,6 +10,7 @@ import {
   FiFileText, 
   FiClock, 
   FiTrendingUp, 
+  FiLayers,
   FiBell, 
   FiSettings, 
   FiUser, 
@@ -37,11 +38,11 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ to, icon, label, collapsed, a
       onClick={onClick}
       className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold select-none transition-all relative group ${
         active 
-          ? "bg-gradient-to-r from-cyan-950/40 to-indigo-950/20 border-l-2 border-cyan-400 text-white" 
-          : "text-slate-400 hover:text-white hover:bg-slate-900/30 border-l-2 border-transparent"
+          ? "bg-cyan-50 dark:bg-gradient-to-r dark:from-cyan-950/40 dark:to-indigo-950/20 border-l-2 border-cyan-500 text-cyan-700 dark:text-white font-bold" 
+          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900/30 border-l-2 border-transparent"
       }`}
     >
-      <div className={`text-md ${active ? "text-cyan-400" : "text-slate-400 group-hover:text-white"}`}>
+      <div className={`text-md ${active ? "text-cyan-600 dark:text-cyan-400" : "text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white"}`}>
         {icon}
       </div>
       {!collapsed && (
@@ -58,7 +59,7 @@ const SidebarItem: React.FC<SidebarItemProps> = ({ to, icon, label, collapsed, a
 
       {/* Floating tooltip for collapsed view */}
       {collapsed && (
-        <div className="absolute left-14 px-2 py-1 rounded bg-slate-950 border border-slate-800 text-[10px] text-white font-bold opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all pointer-events-none z-50 whitespace-nowrap uppercase tracking-widest">
+        <div className="absolute left-14 px-2 py-1 rounded bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-[10px] text-slate-900 dark:text-white font-bold opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all pointer-events-none z-50 whitespace-nowrap uppercase tracking-widest shadow-md">
           {label}
         </div>
       )}
@@ -87,6 +88,7 @@ const Sidebar: React.FC = () => {
     { to: "/dashboard/upload-video", label: "Upload Video", icon: <FiUploadCloud /> },
     { to: "/dashboard/detection-results", label: "Detection Results", icon: <FiFileText /> },
     { to: "/dashboard/history", label: "History", icon: <FiClock /> },
+    { to: "/dashboard/outputs-vault", label: "Outputs Vault", icon: <FiLayers /> },
     { to: "/dashboard/analytics", label: "Analytics", icon: <FiTrendingUp /> },
     { to: "/dashboard/notifications", label: "Notifications", icon: <FiBell /> },
     { to: "/dashboard/settings", label: "Settings", icon: <FiSettings /> },
@@ -98,20 +100,20 @@ const Sidebar: React.FC = () => {
   const sidebarWidth = sidebarExpanded ? "w-64" : "w-16";
 
   const renderContent = (isMobile: boolean = false) => (
-    <div className="flex flex-col h-full bg-[#030712] relative select-none">
+    <div className="flex flex-col h-full bg-white dark:bg-[#030712] relative select-none transition-colors duration-200">
       
       {/* Mobile close button / Desktop Collapse button */}
-      <div className="p-4 border-b border-slate-900 flex items-center justify-between">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-900 flex items-center justify-between">
         {(!sidebarExpanded && !isMobile) ? (
-          <div className="mx-auto p-1 bg-cyan-950/40 border border-cyan-500/25 rounded-md">
-            <BsShieldFillExclamation className="text-cyan-400 text-xs" />
+          <div className="mx-auto p-1 bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-500/25 rounded-md">
+            <BsShieldFillExclamation className="text-cyan-500 dark:text-cyan-400 text-xs" />
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <div className="p-1 bg-cyan-950/40 border border-cyan-500/25 rounded-md">
-              <BsShieldFillExclamation className="text-cyan-400 text-xs" />
+            <div className="p-1 bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-500/25 rounded-md">
+              <BsShieldFillExclamation className="text-cyan-500 dark:text-cyan-400 text-xs" />
             </div>
-            <span className="font-extrabold text-xs tracking-wider uppercase text-white">
+            <span className="font-extrabold text-xs tracking-wider uppercase text-slate-800 dark:text-white">
               AI CommandCenter
             </span>
           </div>
@@ -120,7 +122,7 @@ const Sidebar: React.FC = () => {
         {isMobile && (
           <button
             onClick={() => setMobileOpen(false)}
-            className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+            className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
           >
             <FiX className="text-xs" />
           </button>
@@ -147,10 +149,10 @@ const Sidebar: React.FC = () => {
       </nav>
 
       {/* Footer controls (Logout) */}
-      <div className="p-3 border-t border-slate-900">
+      <div className="p-3 border-t border-slate-200 dark:border-slate-900">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-950/20 border-l-2 border-transparent transition-all text-left"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-semibold text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/20 border-l-2 border-transparent transition-all text-left"
         >
           <FiLogOut className="text-md flex-shrink-0" />
           {(!sidebarExpanded && !isMobile) ? null : <span>Terminate Session</span>}
@@ -161,7 +163,7 @@ const Sidebar: React.FC = () => {
       {!isMobile && (
         <button
           onClick={toggleSidebar}
-          className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:border-slate-700 shadow-md cursor-pointer transition-all z-40"
+          className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white shadow-md cursor-pointer transition-all z-40"
         >
           {sidebarExpanded ? <FiChevronLeft className="text-xs" /> : <FiChevronRight className="text-xs" />}
         </button>
@@ -172,7 +174,7 @@ const Sidebar: React.FC = () => {
   return (
     <>
       {/* 1. Desktop Sidebar Container */}
-      <aside className={`hidden lg:block h-screen fixed left-0 top-0 border-r border-slate-900 transition-all duration-300 z-30 ${sidebarWidth}`}>
+      <aside className={`hidden lg:block h-screen fixed left-0 top-0 border-r border-slate-200 dark:border-slate-900 transition-all duration-300 z-30 ${sidebarWidth}`}>
         {renderContent(false)}
       </aside>
 

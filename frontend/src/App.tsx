@@ -6,6 +6,7 @@ import { DashboardProvider } from './contexts/DashboardContext'
 import { Toaster } from 'react-hot-toast'
 import { LocationProvider } from './contexts/LocationContext'
 import RouteLoader from './components/common/RouteLoader'
+import CookieConsentBanner from './components/common/CookieConsentBanner'
 
 // Layout & Authentication Pages
 const Splash = lazy(() => import('./pages/Splash'))
@@ -15,6 +16,12 @@ const Register = lazy(() => import('./pages/Register'))
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const DashboardLayout = lazy(() => import('./layouts/DashboardLayout'))
 const NotFound = lazy(() => import('./pages/NotFound'))
+
+// Legal & Compliance Pages
+const PrivacyPolicy = lazy(() => import('./pages/legal/PrivacyPolicy'))
+const TermsOfService = lazy(() => import('./pages/legal/TermsOfService'))
+const CookiePolicy = lazy(() => import('./pages/legal/CookiePolicy'))
+const RefundPolicy = lazy(() => import('./pages/legal/RefundPolicy'))
 
 // Dashboard Inner Pages
 const DashboardHome = lazy(() => import('./pages/dashboard/DashboardHome'))
@@ -27,6 +34,7 @@ const Notifications = lazy(() => import('./pages/dashboard/Notifications'))
 const Settings = lazy(() => import('./pages/dashboard/Settings'))
 const Profile = lazy(() => import('./pages/dashboard/Profile'))
 const HelpSupport = lazy(() => import('./pages/dashboard/HelpSupport'))
+const OutputsVault = lazy(() => import('./pages/dashboard/OutputsVault'))
 
 import { useLocation } from './hooks/useLocation'
 
@@ -57,6 +65,7 @@ function App() {
           />
           
           <BrowserRouter>
+            <CookieConsentBanner />
             <Suspense fallback={<RouteLoader />}>
               <Routes>
                 {/* Public/Auth Routes */}
@@ -66,6 +75,16 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 
+                {/* Legal & Compliance Routes (DPDP Act 2023) */}
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
+                <Route path="/terms-and-conditions" element={<TermsOfService />} />
+                <Route path="/cookies" element={<CookiePolicy />} />
+                <Route path="/cookie-policy" element={<CookiePolicy />} />
+                <Route path="/refund" element={<RefundPolicy />} />
+                <Route path="/refund-policy" element={<RefundPolicy />} />
+
                 {/* Guarded Dashboard Routes */}
                 <Route path="/dashboard" element={<DashboardLayout />}>
                   <Route index element={<DashboardHome />} />
@@ -73,6 +92,8 @@ function App() {
                   <Route path="upload-video" element={<UploadVideo />} />
                   <Route path="detection-results" element={<DetectionResults />} />
                   <Route path="history" element={<History />} />
+                  <Route path="outputs-vault" element={<OutputsVault />} />
+                  <Route path="outputs" element={<OutputsVault />} />
                   <Route path="analytics" element={<Analytics />} />
                   <Route path="notifications" element={<Notifications />} />
                   <Route path="settings" element={<Settings />} />
@@ -93,3 +114,4 @@ function App() {
 }
 
 export default App
+

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Float, Integer, Text, DateTime
+from sqlalchemy import Column, String, Float, Integer, Text, DateTime, Boolean
 import datetime
 import json
 from .database import Base
@@ -51,3 +51,29 @@ class Incident(Base):
             "location": {"latitude": self.latitude, "longitude": self.longitude} if self.latitude is not None else None,
             "emailSent": "Yes" if self.alert_status in ("SENT", "SUCCESS") else "No"
         }
+
+class NotificationSetting(Base):
+    __tablename__ = "notification_settings"
+
+    key = Column(String, primary_key=True, index=True)
+    value = Column(Text, nullable=True)
+    updated_at = Column(String, default=lambda: datetime.datetime.now().isoformat())
+    updated_by = Column(String, nullable=True)
+
+class CameraSetting(Base):
+    __tablename__ = "camera_settings"
+
+    camera_id = Column(String, primary_key=True, index=True, default="IP-WEBCAM-01")
+    name = Column(String, default="Android IP Webcam")
+    host = Column(String, nullable=True)  # e.g. "192.168.1.100"
+    port = Column(Integer, default=8080)
+    path = Column(String, default="/videofeed")
+    username = Column(String, nullable=True)
+    password = Column(String, nullable=True)
+    auto_reconnect = Column(Boolean, default=True)
+    is_connected = Column(Boolean, default=False)
+    last_connected_at = Column(String, nullable=True)
+    last_error = Column(String, nullable=True)
+    updated_at = Column(String, default=lambda: datetime.datetime.now().isoformat())
+    updated_by = Column(String, nullable=True)
+

@@ -12,7 +12,14 @@ import { auth } from "../../services/firebase";
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import toast from "react-hot-toast";
 import axios from "axios";
-import { API_BASE_URL } from "../../services/api";
+import { 
+  API_BASE_URL,
+  fetchNotificationSettings,
+  updateNotificationSettings,
+  resetNotificationRecipient,
+  sendTestSms,
+  type NotificationSettingsSummary
+} from "../../services/api";
 import { 
   FiSliders, 
   FiUser, 
@@ -24,11 +31,21 @@ import {
   FiInfo, 
   FiAlertTriangle,
   FiCheckCircle,
-  FiUsers
+  FiUsers,
+  FiPhone,
+  FiSend,
+  FiRefreshCw,
+  FiSave,
+  FiCamera,
+  FiSun,
+  FiMoon
 } from "react-icons/fi";
+import CameraSettingsCard from "../../components/settings/CameraSettingsCard";
+import { useTheme } from "../../contexts/ThemeContext";
 
 const Settings: React.FC = () => {
   const { user, logout } = useAuth();
+  const { theme, setThemeMode } = useTheme();
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
 
   // Emergency Contacts state fetched from backend
@@ -77,6 +94,88 @@ const Settings: React.FC = () => {
       toast.error("Failed to load emergency contacts from server.");
     } finally {
       setLoadingContacts(false);
+    }
+  };
+
+  // Dynamic SMS & Notification Gateway State
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettingsSummary | null>(null);
+  const [loadingNotificationSettings, setLoadingNotificationSettings] = useState(false);
+  const [smsRecipientInput, setSmsRecipientInput] = useState("");
+  const [savingSmsRecipient, setSavingSmsRecipient] = useState(false);
+  const [sendingTestSms, setSendingTestSms] = useState(false);
+  const [resettingSmsRecipient, setResettingSmsRecipient] = useState(false);
+
+  // Fetch notification settings when notification tab opens
+  React.useEffect(() => {
+    if (activeTab === "notifications") {
+      loadNotificationSettings();
+    }
+  }, [activeTab]);
+
+  const loadNotificationSettings = async () => {
+    setLoadingNotificationSettings(true);
+    try {
+      const summary = await fetchNotificationSettings();
+      setNotificationSettings(summary);
+      setSmsRecipientInput(summary.sms_recipient_number || "");
+      if (summary.sms_enabled !== undefined) {
+        setNotifySms(summary.sms_enabled);
+      }
+    } catch (err: any) {
+      console.error("Failed to load notification settings:", err);
+      toast.error("Failed to load SMS notification settings.");
+    } finally {
+      setLoadingNotificationSettings(false);
+    }
+  };
+
+  const handleSaveSmsRecipient = async () => {
+    if (!smsRecipientInput.trim()) {
+      toast.error("Please enter a phone number.");
+      return;
+    }
+    setSavingSmsRecipient(true);
+    try {
+      const updated = await updateNotificationSettings(smsRecipientInput.trim(), "admin");
+      setNotificationSettings(updated);
+      setSmsRecipientInput(updated.sms_recipient_number);
+      toast.success("SMS recipient updated and persisted successfully!");
+    } catch (err: any) {
+      console.error(err);
+      const detail = err.response?.data?.detail || err.message || "Failed to update SMS recipient.";
+      toast.error(detail);
+    } finally {
+      setSavingSmsRecipient(false);
+    }
+  };
+
+  const handleResetSmsRecipient = async () => {
+    setResettingSmsRecipient(true);
+    try {
+      const updated = await resetNotificationRecipient("admin");
+      setNotificationSettings(updated);
+      setSmsRecipientInput(updated.sms_recipient_number);
+      toast.success("SMS recipient reset to system environment default.");
+    } catch (err: any) {
+      console.error(err);
+      const detail = err.response?.data?.detail || err.message || "Failed to reset SMS recipient.";
+      toast.error(detail);
+    } finally {
+      setResettingSmsRecipient(false);
+    }
+  };
+
+  const handleSendTestSms = async () => {
+    setSendingTestSms(true);
+    try {
+      const res = await sendTestSms(smsRecipientInput.trim() || undefined, "admin");
+      toast.success(res.message || "Verification test SMS dispatched successfully!");
+    } catch (err: any) {
+      console.error(err);
+      const detail = err.response?.data?.detail || err.message || "Failed to dispatch test SMS.";
+      toast.error(detail);
+    } finally {
+      setSendingTestSms(false);
     }
   };
 
@@ -369,39 +468,225 @@ const Settings: React.FC = () => {
           {/* TAB 5: BACKEND */}
           {activeTab === "backend" && <BackendStatusCard />}
 
+          {/* TAB: CAMERA SETTINGS */}
+          {activeTab === "camera" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-900 pb-3">
+                <h2 className="font-extrabold text-sm text-slate-200 flex items-center gap-1.5 uppercase tracking-wide">
+                  <FiCamera className="text-cyan-400" /> IP Camera & Local Wi-Fi Video Source
+                </h2>
+              </div>
+              <CameraSettingsCard standalone={false} />
+            </div>
+          )}
+
           {/* TAB 6: NOTIFICATIONS */}
           {activeTab === "notifications" && (
             <div className="space-y-6">
-              <h2 className="font-extrabold text-sm text-slate-200 border-b border-slate-900 pb-3 flex items-center gap-1.5 uppercase tracking-wide">
-                <FiBell className="text-cyan-400" /> Notifications & alert dispatches
-              </h2>
+              <div className="flex items-center justify-between border-b border-slate-900 pb-3">
+                <h2 className="font-extrabold text-sm text-slate-200 flex items-center gap-1.5 uppercase tracking-wide">
+                  <FiBell className="text-cyan-400" /> Notifications & Alert Dispatches
+                </h2>
+                {loadingNotificationSettings && (
+                  <span className="text-[10px] text-cyan-400 flex items-center gap-1 animate-pulse">
+                    <FiRefreshCw className="animate-spin" /> Syncing Gateway...
+                  </span>
+                )}
+              </div>
 
-              <div className="space-y-4">
-                {[
-                  { label: "Critical Alerts", desc: "Instantly prompt blinking warning alerts on violence anomalies.", state: notifyCritical, set: setNotifyCritical },
-                  { label: "Warning Alerts", desc: "Flag medium risk distress gestures.", state: notifyWarning, set: setNotifyWarning },
-                  { label: "Email Notifications (Placeholder)", desc: "Dispatch warning report summaries to SMTP accounts.", state: notifyEmail, set: setNotifyEmail },
-                  { label: "SMS Notifications (Placeholder)", desc: "Forward distress events via TextBee SMS targets.", state: notifySms, set: setNotifySms },
-                  { label: "Desktop Notifications", desc: "Show browser system notification overlays on anomalies.", state: notifyDesktop, set: setNotifyDesktop },
-                  { label: "Sound Alerts", desc: "Sound threat buzzer alert logs.", state: notifySound, set: setNotifySound }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-4 bg-slate-950/20 border border-slate-900 rounded-xl">
-                    <div>
-                      <h4 className="font-bold text-slate-200 uppercase">{item.label}</h4>
-                      <p className="text-[10px] text-slate-500 mt-0.5">{item.desc}</p>
+              {/* SECTION 1: TEXTBEE EMERGENCY SMS GATEWAY CONFIGURATION */}
+              <div className="p-5 bg-slate-950/40 border border-cyan-900/30 rounded-2xl space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-900/80 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+                      <FiPhone className="w-4 h-4" />
                     </div>
-                    <button
-                      onClick={() => item.set(!item.state)}
-                      className={`relative w-9 h-5 rounded-full transition-colors duration-200 cursor-pointer focus:outline-none ${
-                        item.state ? "bg-cyan-500" : "bg-slate-800 border border-slate-700"
-                      }`}
-                    >
-                      <span className={`absolute left-0.5 top-0.5 w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200 ${
-                        item.state ? "translate-x-4" : "translate-x-0"
-                      }`} />
-                    </button>
+                    <div>
+                      <h3 className="font-bold text-slate-100 text-xs uppercase tracking-wide">
+                        TextBee Emergency SMS Gateway
+                      </h3>
+                      <p className="text-[10px] text-slate-400">
+                        Dynamically configure emergency alert destination phone number
+                      </p>
+                    </div>
                   </div>
-                ))}
+
+                  {/* Status Badges */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase border flex items-center gap-1 ${
+                      notificationSettings?.textbee_configured 
+                        ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-400' 
+                        : 'bg-amber-950/40 border-amber-500/30 text-amber-400'
+                    }`}>
+                      {notificationSettings?.textbee_configured ? (
+                        <>
+                          <FiCheckCircle className="w-3 h-3" /> Gateway Online
+                        </>
+                      ) : (
+                        <>
+                          <FiAlertTriangle className="w-3 h-3" /> Gateway Unconfigured
+                        </>
+                      )}
+                    </span>
+
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase border ${
+                      notificationSettings?.source === "dashboard"
+                        ? 'bg-cyan-950/40 border-cyan-500/30 text-cyan-300'
+                        : 'bg-slate-900 border-slate-800 text-slate-400'
+                    }`}>
+                      {notificationSettings?.source === "dashboard" ? "Custom Setting (DB)" : "System Default (.env)"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Current Active Number Summary */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-900/40 p-3.5 rounded-xl border border-slate-800/80 text-[11px]">
+                  <div>
+                    <span className="text-[9px] text-slate-500 block uppercase font-bold">Active Recipient</span>
+                    <span className="font-mono font-bold text-slate-200">
+                      {notificationSettings?.masked_recipient || "Not Configured"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-500 block uppercase font-bold">Full Destination</span>
+                    <span className="font-mono font-bold text-cyan-400">
+                      {notificationSettings?.sms_recipient_number || "None"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] text-slate-500 block uppercase font-bold">Last Synchronized</span>
+                    <span className="text-slate-400 text-[10px]">
+                      {notificationSettings?.updated_at 
+                        ? new Date(notificationSettings.updated_at).toLocaleString() 
+                        : "System Default / Baseline"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Edit Form */}
+                <div className="space-y-3 pt-1">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-300 block uppercase tracking-wide mb-1">
+                      Update SMS Recipient Phone Number
+                    </label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="relative flex-grow">
+                        <input
+                          type="tel"
+                          value={smsRecipientInput}
+                          onChange={(e) => setSmsRecipientInput(e.target.value)}
+                          placeholder="+918296387497"
+                          className="w-full px-3.5 py-2 rounded-xl glass-input text-slate-200 font-mono text-xs border border-slate-700/60 focus:border-cyan-400 transition-colors"
+                        />
+                      </div>
+                      
+                      <button
+                        onClick={handleSaveSmsRecipient}
+                        disabled={savingSmsRecipient || !smsRecipientInput.trim() || smsRecipientInput.trim() === notificationSettings?.sms_recipient_number}
+                        className={`px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                          savingSmsRecipient || !smsRecipientInput.trim() || smsRecipientInput.trim() === notificationSettings?.sms_recipient_number
+                            ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/20'
+                        }`}
+                      >
+                        {savingSmsRecipient ? (
+                          <>
+                            <FiRefreshCw className="w-3.5 h-3.5 animate-spin" /> Saving...
+                          </>
+                        ) : (
+                          <>
+                            <FiSave className="w-3.5 h-3.5" /> Save Changes
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={handleSendTestSms}
+                        disabled={sendingTestSms || (!smsRecipientInput.trim() && !notificationSettings?.sms_recipient_number)}
+                        className={`px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+                          sendingTestSms || (!smsRecipientInput.trim() && !notificationSettings?.sms_recipient_number)
+                            ? 'bg-slate-900 border-slate-800 text-slate-600 cursor-not-allowed'
+                            : 'bg-emerald-950/40 hover:bg-emerald-900/50 border-emerald-500/30 text-emerald-400'
+                        }`}
+                        title="Dispatch a verification test SMS to test TextBee gateway"
+                      >
+                        {sendingTestSms ? (
+                          <>
+                            <FiRefreshCw className="w-3.5 h-3.5 animate-spin" /> Testing...
+                          </>
+                        ) : (
+                          <>
+                            <FiSend className="w-3.5 h-3.5" /> Send Test SMS
+                          </>
+                        )}
+                      </button>
+
+                      {notificationSettings?.source === "dashboard" && (
+                        <button
+                          onClick={handleResetSmsRecipient}
+                          disabled={resettingSmsRecipient}
+                          className="px-3 py-2 rounded-xl font-bold flex items-center justify-center gap-1 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition-all cursor-pointer"
+                          title="Reset to system environment variable default"
+                        >
+                          <FiRefreshCw className={`w-3 h-3 ${resettingSmsRecipient ? 'animate-spin' : ''}`} /> Reset
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    <strong className="text-slate-300">Format note:</strong> Accepts international E.164 formats (e.g. <span className="text-cyan-400 font-mono">+918296387497</span> or <span className="text-cyan-400 font-mono">+14155552671</span>). 10-digit Indian numbers (<span className="text-cyan-400 font-mono">8296387497</span>) are automatically normalized with <span className="text-cyan-400 font-mono">+91</span>.
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-900 text-[10px] text-slate-400 flex items-start gap-2">
+                  <FiInfo className="text-cyan-400 w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-slate-300">Persistent & Zero-Downtime:</span> Changes take effect immediately across all alert dispatch pipelines (webcam triggers, CCTV streams, and manual uploads). No server restart or code modifications required. TextBee API keys remain securely guarded on the server.
+                  </div>
+                </div>
+
+                <div className="p-3 bg-cyan-950/20 rounded-xl border border-cyan-500/20 text-[10px] text-slate-300 flex items-start gap-2">
+                  <FiShield className="text-cyan-400 w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-cyan-300">DPDP Act 2023 Consent Notice:</span> Ensure that recipient phone numbers entered for SMS alerts belong to authorized emergency responders or consenting contacts. By saving this destination, you confirm having obtained informed consent to dispatch real-time distress alerts and incident location metadata to this device.
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: SYSTEM ALERT TOGGLES */}
+              <div className="space-y-3 pt-2">
+                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wide">
+                  System Dispatch Channels
+                </h3>
+
+                <div className="space-y-3">
+                  {[
+                    { label: "Critical Violence Alerts", desc: "Instantly prompt blinking warning alerts on violence anomalies.", state: notifyCritical, set: setNotifyCritical },
+                    { label: "Warning Alerts", desc: "Flag medium risk distress gestures.", state: notifyWarning, set: setNotifyWarning },
+                    { label: "Email Notifications (SMTP)", desc: "Dispatch high-priority incident reports and snapshots to configured security emails.", state: notifyEmail, set: setNotifyEmail },
+                    { label: "SMS Notifications (TextBee)", desc: "Forward distress events via TextBee SMS target configured above.", state: notifySms, set: setNotifySms },
+                    { label: "Desktop Notifications", desc: "Show browser system notification overlays on anomalies.", state: notifyDesktop, set: setNotifyDesktop },
+                    { label: "Sound Threat Alert", desc: "Sound threat buzzer alert audio on violence detection.", state: notifySound, set: setNotifySound }
+                  ].map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-3.5 bg-slate-950/20 border border-slate-900 rounded-xl">
+                      <div>
+                        <h4 className="font-bold text-slate-200 uppercase text-[11px]">{item.label}</h4>
+                        <p className="text-[10px] text-slate-500 mt-0.5">{item.desc}</p>
+                      </div>
+                      <button
+                        onClick={() => item.set(!item.state)}
+                        className={`relative w-9 h-5 rounded-full transition-colors duration-200 cursor-pointer focus:outline-none ${
+                          item.state ? "bg-cyan-500" : "bg-slate-800 border border-slate-700"
+                        }`}
+                      >
+                        <span className={`absolute left-0.5 top-0.5 w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200 ${
+                          item.state ? "translate-x-4" : "translate-x-0"
+                        }`} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -461,6 +746,48 @@ const Settings: React.FC = () => {
               </h2>
 
               <div className="space-y-6">
+                {/* Theme Mode Selector */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">Display Theme</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
+                    <button
+                      type="button"
+                      onClick={() => setThemeMode("dark")}
+                      className={`flex items-center gap-3 p-3.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        theme === "dark"
+                          ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-400 shadow-sm ring-1 ring-cyan-500/30"
+                          : "border-slate-800 bg-slate-900/40 text-slate-400 hover:text-slate-200 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="p-2 rounded-lg bg-indigo-950/40 border border-indigo-500/30 text-indigo-400">
+                        <FiMoon className="w-4 h-4" />
+                      </div>
+                      <div className="text-left">
+                        <span className="block text-slate-200">Dark Theme</span>
+                        <span className="text-[10px] text-slate-500 font-normal">Command Center Night Mode</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setThemeMode("light")}
+                      className={`flex items-center gap-3 p-3.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        theme === "light"
+                          ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 shadow-sm ring-1 ring-cyan-500/30"
+                          : "border-slate-800 bg-slate-900/40 text-slate-400 hover:text-slate-200 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-500">
+                        <FiSun className="w-4 h-4" />
+                      </div>
+                      <div className="text-left">
+                        <span className="block text-slate-200">Light Theme</span>
+                        <span className="text-[10px] text-slate-500 font-normal">Bright Daytime Interface</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
                 {/* Accent Color */}
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-2">System Accent Color</label>

@@ -186,7 +186,9 @@ const HelpSupport: React.FC = () => {
               </div>
               <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-800">
                 <h4 className="text-sm font-semibold text-slate-300 mb-1">SMS Notifications</h4>
-                <p className="text-xs text-slate-500">Supported via Fast2SMS but currently dependent on API key configuration (falls back to Mock mode if unconfigured).</p>
+                <p className="text-xs text-slate-500">
+                  Powered by the TextBee Gateway. Emergency recipient mobile numbers can be dynamically updated from <strong>Settings &rarr; Notifications</strong> without restarting the backend.
+                </p>
               </div>
             </div>
           </section>
@@ -242,15 +244,23 @@ const HelpSupport: React.FC = () => {
             </div>
           </section>
 
-          {/* Contact Support */}
+          {/* Legal Compliance & Support */}
           <section className="glass-panel p-6 rounded-xl border border-slate-800">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-slate-700/50 rounded-lg text-slate-300"><FiMail className="text-xl" /></div>
-              <h2 className="text-xl font-semibold text-white">Support Info</h2>
+              <h2 className="text-xl font-semibold text-white">Support & Compliance</h2>
             </div>
-            <p className="text-sm text-slate-400">
-              Refer to the project administrator or deployment documentation for configuration and support.
-            </p>
+            <div className="space-y-2 text-xs text-slate-400">
+              <p><strong className="text-white">Technical Support:</strong> support@aegissafe.ai</p>
+              <p><strong className="text-white">Grievance Officer:</strong> Mr. Arvind Raman (grievance@aegissafe.ai)</p>
+              <p><strong className="text-white">Emergency Services:</strong> In actual danger, call <strong>112</strong> immediately.</p>
+              <div className="pt-2 border-t border-slate-800 flex flex-wrap gap-2 text-[11px] text-cyan-400">
+                <a href="/privacy" className="hover:underline">Privacy Policy</a> • 
+                <a href="/terms" className="hover:underline">Terms of Service</a> • 
+                <a href="/cookies" className="hover:underline">Cookie Policy</a> • 
+                <a href="/refund" className="hover:underline">Refund Policy</a>
+              </div>
+            </div>
           </section>
 
         </div>

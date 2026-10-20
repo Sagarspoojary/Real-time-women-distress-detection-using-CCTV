@@ -4,7 +4,8 @@ import {
   FiSquare, 
   FiPause, 
   FiCamera, 
-  FiMaximize2 
+  FiMaximize2,
+  FiSliders
 } from "react-icons/fi";
 import toast from "react-hot-toast";
 
@@ -18,6 +19,7 @@ interface CameraControlsProps {
   onStart: () => void;
   onStop: () => void;
   onPause: () => void;
+  onOpenSettings?: () => void;
 }
 
 const CameraControls: React.FC<CameraControlsProps> = ({
@@ -30,6 +32,7 @@ const CameraControls: React.FC<CameraControlsProps> = ({
   onStart,
   onStop,
   onPause,
+  onOpenSettings,
 }) => {
 
   const handleSnapshot = () => {
@@ -67,16 +70,27 @@ const CameraControls: React.FC<CameraControlsProps> = ({
         </div>
 
         {cameraSource === "IP" && (
-          <div className="flex items-center gap-2 flex-grow max-w-sm">
-            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">URL</label>
+          <div className="flex items-center gap-2 flex-grow max-w-md">
+            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Stream URL</label>
             <input 
               type="text" 
-              className="bg-slate-900/60 border border-slate-800 text-slate-200 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-500 transition-colors w-full"
+              className="bg-slate-900/60 border border-slate-800 text-slate-200 text-xs font-mono rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-500 transition-colors w-full"
               value={ipUrl}
               onChange={(e) => setIpUrl(e.target.value)}
               disabled={isActive}
-              placeholder="http://10.69.157.102:8080/video"
+              placeholder="http://<phone-ip>:8080/videofeed"
+              title="Camera stream URL (auto-appends /videofeed if omitted)"
             />
+            {onOpenSettings && (
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-cyan-400 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors flex-shrink-0 cursor-pointer"
+                title="Open Camera Settings"
+              >
+                <FiSliders className="w-3.5 h-3.5 text-cyan-400" /> Settings
+              </button>
+            )}
           </div>
         )}
       </div>

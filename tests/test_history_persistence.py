@@ -24,9 +24,25 @@ class TestHistoryPersistence(unittest.TestCase):
     def setUp(self):
         import database.models
         Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        try:
+            db.query(models.Incident).delete()
+            db.commit()
+        except Exception:
+            pass
+        finally:
+            db.close()
         self.client = TestClient(app)
         
     def tearDown(self):
+        db = SessionLocal()
+        try:
+            db.query(models.Incident).delete()
+            db.commit()
+        except Exception:
+            pass
+        finally:
+            db.close()
         Base.metadata.drop_all(bind=engine)
         
     def test_history_api_empty(self):

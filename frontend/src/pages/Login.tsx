@@ -85,13 +85,16 @@ const Login: React.FC = () => {
           
           {/* Email input */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-              Email Address
+            <label htmlFor="login-email" className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Email Address <span className="text-cyan-400">*</span>
             </label>
             <input
+              id="login-email"
               type="email"
+              aria-required="true"
+              aria-invalid={!!errors.email}
               {...register("email")}
-              className={`w-full px-4 py-3 rounded-lg glass-input text-sm ${
+              className={`w-full px-4 py-3 rounded-lg glass-input text-sm focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
                 errors.email ? "border-red-500/50 focus:border-red-500" : ""
               }`}
               placeholder="operator@security.ai"
@@ -105,21 +108,24 @@ const Login: React.FC = () => {
           {/* Password Input */}
           <div>
             <div className="flex justify-between items-center mb-1">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Password
+              <label htmlFor="login-password" className="block text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Password <span className="text-cyan-400">*</span>
               </label>
               <Link 
                 to="/forgot-password" 
-                className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors focus-visible:ring-2 focus-visible:ring-cyan-400 rounded"
               >
                 Forgot Password?
               </Link>
             </div>
             <div className="relative">
               <input
+                id="login-password"
                 type={showPassword ? "text" : "password"}
+                aria-required="true"
+                aria-invalid={!!errors.password}
                 {...register("password")}
-                className={`w-full px-4 py-3 rounded-lg glass-input text-sm ${
+                className={`w-full px-4 py-3 rounded-lg glass-input text-sm focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none ${
                   errors.password ? "border-red-500/50 focus:border-red-500" : ""
                 }`}
                 placeholder="••••••••"
@@ -128,7 +134,8 @@ const Login: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors p-1"
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <BsEyeSlash className="text-md" /> : <BsEye className="text-md" />}
               </button>
@@ -144,7 +151,7 @@ const Login: React.FC = () => {
               type="checkbox"
               id="rememberMe"
               {...register("rememberMe")}
-              className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-950 focus:ring-2 focus:ring-offset-2"
+              className="w-4 h-4 rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-slate-950 focus:ring-2 focus:ring-offset-2 cursor-pointer"
             />
             <label htmlFor="rememberMe" className="ml-2 text-xs text-slate-400 select-none cursor-pointer">
               Remember this terminal
@@ -155,9 +162,9 @@ const Login: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-semibold rounded-lg shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/25 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
+            className="w-full py-3 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-semibold rounded-lg shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/25 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
           >
-            {loading ? <BiLoaderAlt className="animate-spin text-lg" /> : "Sign In"}
+            {loading ? <BiLoaderAlt className="animate-spin text-lg" /> : "Sign In to Surveillance Terminal"}
           </button>
         </form>
 
@@ -172,26 +179,37 @@ const Login: React.FC = () => {
         </div>
 
         {/* SSO login options */}
-        <div className="grid grid-cols-2 gap-3">
+        <div>
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-slate-900/60 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-sm text-slate-200 hover:text-white transition-all disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg bg-slate-900/60 border border-slate-800 hover:border-slate-700 hover:bg-slate-900 text-sm text-slate-200 hover:text-white transition-all disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none"
           >
-            <BsGoogle className="text-red-500 text-xs" /> Google
+            <BsGoogle className="text-red-500 text-sm" /> Sign In with Google
           </button>
         </div>
 
-        {/* Link to Register */}
-        <p className="mt-8 text-center text-xs text-slate-500">
-          First time here?{" "}
-          <Link 
-            to="/register" 
-            className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
-          >
-            Create an Operator Account
-          </Link>
-        </p>
+        {/* Link to Register & Legal Links */}
+        <div className="mt-8 space-y-3 text-center">
+          <p className="text-xs text-slate-400">
+            First time here?{" "}
+            <Link 
+              to="/register" 
+              className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
+            >
+              Create an Operator Account
+            </Link>
+          </p>
+          <div className="flex justify-center items-center gap-3 text-[11px] text-slate-500">
+            <Link to="/privacy" className="hover:text-slate-300 transition-colors">Privacy</Link>
+            <span>•</span>
+            <Link to="/terms" className="hover:text-slate-300 transition-colors">Terms</Link>
+            <span>•</span>
+            <Link to="/cookies" className="hover:text-slate-300 transition-colors">Cookies</Link>
+            <span>•</span>
+            <Link to="/refund" className="hover:text-slate-300 transition-colors">Refunds</Link>
+          </div>
+        </div>
       </div>
     </div>
   );

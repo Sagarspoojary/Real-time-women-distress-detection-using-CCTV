@@ -11,6 +11,13 @@ try:
 except ImportError:
     pass  # python-dotenv not installed; env vars must be set in the shell environment
 
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+
+
 from routes.predict import router
 from routes.emergency_contacts import router as emergency_contacts_router
 from routes.emergency import router as emergency_router
@@ -19,6 +26,8 @@ from routes.cameras import router as camera_router
 from routes.webcam import router as webcam_router
 from routes.ip_webcam import router as ip_webcam_router
 from routes.history import router as history_router
+from routes.outputs import router as outputs_router
+from routes.settings import router as settings_router
 from routes.ws import router as ws_router
 from routes.ws import broadcast_loop
 from services.evidence_cleanup_service import start_cleanup_task
@@ -74,6 +83,8 @@ app.include_router(webcam_router, prefix="/api/v1")
 app.include_router(history_router, prefix="/api/v1")
 app.include_router(ws_router, prefix="/api/v1")
 app.include_router(ip_webcam_router, prefix="/api/v1")
+app.include_router(outputs_router, prefix="/api/v1")
+app.include_router(settings_router, prefix="/api/v1")
 
 # ─── Serve built React frontend (SPA) ────────────────────────────────────────
 # When frontend/dist exists (after: cd frontend && npm run build),

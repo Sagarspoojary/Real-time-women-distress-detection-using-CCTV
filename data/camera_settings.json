@@ -1,0 +1,14 @@
+{
+    "IP-WEBCAM-01": {
+        "camera_id": "IP-WEBCAM-01",
+        "name": "Android IP Webcam",
+        "host": "10.61.181.231",
+        "port": 8080,
+        "path": "/videofeed",
+        "username": null,
+        "password": null,
+        "auto_reconnect": true,
+        "updated_at": "2026-10-20T02:00:58.691632+00:00",
+        "updated_by": "admin"
+    }
+}

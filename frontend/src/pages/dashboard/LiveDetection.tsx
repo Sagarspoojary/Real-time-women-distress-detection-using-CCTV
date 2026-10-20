@@ -8,9 +8,11 @@ import Timeline from "../../components/live/Timeline";
 import type { TimelineEvent } from "../../components/live/Timeline";
 import AlertCard from "../../components/live/AlertCard";
 import type { AlertData } from "../../components/live/AlertCard";
+import CameraSettingsCard from "../../components/settings/CameraSettingsCard";
 import { FiCpu } from "react-icons/fi";
+import { API_BASE_URL, fetchCameraConfig } from "../../services/api";
 
-const API = "http://localhost:8000/api/v1";
+const API = `${API_BASE_URL}/api/v1`;
 const POLL_INTERVAL_MS = 2000; // poll /status every 2 seconds
 
 const LiveDetection: React.FC = () => {
@@ -21,7 +23,19 @@ const LiveDetection: React.FC = () => {
   
   // Camera source configuration
   const [cameraSource, setCameraSource] = useState<"LOCAL" | "IP">("LOCAL");
-  const [ipUrl, setIpUrl] = useState("http://10.69.157.102:8080/video");
+  const [ipUrl, setIpUrl] = useState("");
+  const [showCameraSettings, setShowCameraSettings] = useState(false);
+
+  // Sync configured camera URL on mount
+  useEffect(() => {
+    fetchCameraConfig()
+      .then((cfg) => {
+        if (cfg.active_url_masked) {
+          setIpUrl(cfg.active_url_masked);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Real-time metrics (from status API)
   const [frameNumber, setFrameNumber] = useState(0);
@@ -132,9 +146,29 @@ const LiveDetection: React.FC = () => {
     setIsLoading(true);
     try {
       const endpoint = cameraSource === "LOCAL" ? "webcam/start" : "ipwebcam/start";
-      const body = cameraSource === "IP" ? JSON.stringify({ url: ipUrl }) : undefined;
+      let body: string | undefined = undefined;
       const headers = cameraSource === "IP" ? { "Content-Type": "application/json" } : undefined;
-      
+      if (cameraSource === "IP") {
+        let trimmed = ipUrl.trim();
+        if (trimmed) {
+          if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+            trimmed = `http://${trimmed}`;
+          }
+          try {
+            const parsed = new URL(trimmed);
+            if (!parsed.pathname || parsed.pathname === "/") {
+              parsed.pathname = "/videofeed";
+              trimmed = parsed.toString();
+            }
+          } catch {
+            if (!trimmed.includes("/")) {
+              trimmed = `${trimmed}/videofeed`;
+            }
+          }
+          body = JSON.stringify({ url: trimmed });
+        }
+      }
+
       const res = await fetch(`${API}/${endpoint}`, { 
         method: "POST",
         headers,
@@ -238,7 +272,22 @@ const LiveDetection: React.FC = () => {
           onStart={isLoading ? () => {} : handleStart}
           onStop={isLoading ? () => {} : handleStop}
           onPause={handlePause}
+          onOpenSettings={() => setShowCameraSettings((prev) => !prev)}
         />
+
+        {/* Collapsible Camera Settings Panel for IP Webcam */}
+        {(showCameraSettings || (cameraSource === "IP" && !ipUrl)) && (
+          <div className="transition-all animate-fadeIn">
+            <CameraSettingsCard 
+              standalone={false}
+              onStatusChange={(newStatus) => {
+                if (newStatus.stream_url) {
+                  setIpUrl(newStatus.stream_url);
+                }
+              }} 
+            />
+          </div>
+        )}
 
         {/* Event Logs Timeline */}
         <Timeline events={events} />

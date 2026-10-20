@@ -7,7 +7,7 @@ from alerts.alert_dispatcher import AlertDispatcher
 
 class WomenDistressPipeline:
 
-    def __init__(self):
+    def __init__(self, enable_in_loop_alerts: bool = False):
 
         self.model1 = ViolenceDetector()
         self.model2 = DistressDetector()
@@ -16,9 +16,10 @@ class WomenDistressPipeline:
         self.person_manager = PersonManager()
         self.validator = TrackValidator()
 
-        # Alert dispatcher — one instance, shared across all requests.
-        # Cooldown state is maintained per track_id across the lifetime of the server.
-        self.dispatcher = AlertDispatcher()
+        # In-loop alert dispatcher is disabled by default to eliminate competing legacy
+        # notification dispatch and prevent uncoordinated SMTP failures during video inference.
+        # Production incidents and alerts are handled by services.alert_dispatcher via /predict.
+        self.dispatcher = AlertDispatcher() if enable_in_loop_alerts else None
 
     def process(self, video_path):
 
@@ -85,12 +86,12 @@ class WomenDistressPipeline:
         # Clear tracking state for the new video
         self.person_manager.clear()
 
-        # Reset all alert cooldowns so each new video starts fresh
-        self.dispatcher.reset_all()
+        # Reset all alert cooldowns so each new video starts fresh (if in-loop dispatcher enabled)
+        if self.dispatcher:
+            self.dispatcher.reset_all()
 
         # Process the complete video frame-by-frame.
-        # Pass the dispatcher + distress context so real-time alerts can fire
-        # from inside the frame loop the moment Female + distress is confirmed.
+        # Pass the dispatcher + distress context if real-time in-loop alerting is requested.
         latest_frame = self.model3.detect(
             video_path,
             self.person_manager,
@@ -103,8 +104,9 @@ class WomenDistressPipeline:
 
         # Remove stale tracks
         stale_ids = self.person_manager.remove_stale(latest_frame)
-        for sid in stale_ids:
-            self.dispatcher.reset_track(sid)
+        if self.dispatcher:
+            for sid in stale_ids:
+                self.dispatcher.reset_track(sid)
 
         # Get all tracked people
         people = self.person_manager.get_all()

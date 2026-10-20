@@ -1,36 +1,70 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   CSS Theme Variables
+   ───────────────────────────────────────────────────────────────────────────── */
 :root {
   font-family: 'Outfit', sans-serif;
-  color-scheme: dark;
+  color-scheme: light;
+  --bg-app: #f1f5f9;
+  --bg-surface: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --bg-input: rgba(255, 255, 255, 0.95);
+  --border-subtle: #e2e8f0;
+  --text-main: #0f172a;
+  --text-sub: #475569;
 }
 
-/* Premium scrollbar styling */
+html.dark {
+  color-scheme: dark;
+  --bg-app: #030712;
+  --bg-surface: #0b0f19;
+  --bg-card: rgba(15, 23, 42, 0.55);
+  --bg-input: rgba(3, 7, 18, 0.65);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --text-main: #f8fafc;
+  --text-sub: #94a3b8;
+}
+
+/* Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #030712;
+  background: var(--bg-app);
 }
 ::-webkit-scrollbar-thumb {
-  background: #1f2937;
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+html.dark ::-webkit-scrollbar-track {
+  background: #030712;
+}
+html.dark ::-webkit-scrollbar-thumb {
+  background: #1f2937;
+}
+html.dark ::-webkit-scrollbar-thumb:hover {
   background: #4b5563;
 }
 
+/* Global Body */
 body {
   margin: 0;
   padding: 0;
-  background-color: #030712;
-  color: #f3f4f6;
+  background-color: var(--bg-app);
+  color: var(--text-main);
   min-height: 100vh;
   width: 100%;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 #root {
@@ -39,18 +73,23 @@ body {
   flex-direction: column;
 }
 
-/* Glassmorphism custom classes for Palantir/Crowdstrike look */
+/* Glassmorphism custom classes */
 .glass-panel {
-  background: rgba(15, 23, 42, 0.45);
+  background: var(--bg-card);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+html:not(.dark) .glass-panel {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
 }
 
 .glass-input {
-  background: rgba(3, 7, 18, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #f3f4f6;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
   transition: all 0.2s ease-in-out;
 }
 
@@ -66,4 +105,74 @@ body {
 
 .glow-purple {
   text-shadow: 0 0 10px rgba(124, 58, 237, 0.5);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Light Theme System Overrides for Hardcoded Dark Palette Classes
+   ───────────────────────────────────────────────────────────────────────────── */
+html:not(.dark) {
+  --tw-shadow-color: rgba(0, 0, 0, 0.05);
+}
+
+html:not(.dark) .bg-\[\#030712\] {
+  background-color: #f8fafc !important;
+}
+
+html:not(.dark) .bg-slate-950 {
+  background-color: #ffffff !important;
+}
+
+html:not(.dark) .bg-slate-900 {
+  background-color: #f1f5f9 !important;
+}
+
+html:not(.dark) .bg-slate-900\/60,
+html:not(.dark) .bg-slate-900\/50,
+html:not(.dark) .bg-slate-900\/40,
+html:not(.dark) .bg-slate-900\/30,
+html:not(.dark) .bg-slate-950\/20,
+html:not(.dark) .bg-slate-950\/25,
+html:not(.dark) .bg-slate-950\/30,
+html:not(.dark) .bg-slate-950\/40,
+html:not(.dark) .bg-slate-950\/50,
+html:not(.dark) .bg-slate-950\/60,
+html:not(.dark) .bg-slate-950\/80 {
+  background-color: rgba(241, 245, 249, 0.85) !important;
+}
+
+html:not(.dark) .border-slate-900,
+html:not(.dark) .border-slate-800 {
+  border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) .border-slate-800\/50,
+html:not(.dark) .border-slate-800\/80,
+html:not(.dark) .border-slate-800\/85 {
+  border-color: rgba(226, 232, 240, 0.85) !important;
+}
+
+html:not(.dark) .text-slate-100,
+html:not(.dark) .text-slate-200,
+html:not(.dark) .text-white {
+  color: #0f172a !important;
+}
+
+html:not(.dark) .text-slate-400 {
+  color: #475569 !important;
+}
+
+html:not(.dark) .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Maintain Status Indicators & Accents */
+html:not(.dark) .text-cyan-400,
+html:not(.dark) .text-emerald-400,
+html:not(.dark) .text-amber-400,
+html:not(.dark) .text-red-400,
+html:not(.dark) .text-red-300,
+html:not(.dark) .text-indigo-400,
+html:not(.dark) .text-rose-400,
+html:not(.dark) .text-violet-400 {
+  color: revert !important;
 }
