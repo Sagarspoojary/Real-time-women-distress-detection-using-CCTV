@@ -42,13 +42,9 @@ export function useLocation() {
   const watchIdRef = useRef<number | null>(null);
 
   useEffect(() => {
-    // If cached location exists, sync immediately to backend on mount
+    // Clean up any stale approximate location cache
     try {
-      const cached = localStorage.getItem("distress_ai_last_location");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        axios.post(`${API_BASE_URL}/api/v1/location`, parsed).catch(() => {});
-      }
+      localStorage.removeItem("distress_ai_last_location");
     } catch (e) {}
 
     if (!navigator.geolocation) {

@@ -17,6 +17,7 @@ class LocationPayload(BaseModel):
     longitude: float
     accuracy: Optional[float] = None
     timestamp: Optional[str] = None
+    is_manual: Optional[bool] = False
 
 @router.post("/location")
 async def update_location(payload: LocationPayload):
@@ -25,7 +26,8 @@ async def update_location(payload: LocationPayload):
             latitude=payload.latitude,
             longitude=payload.longitude,
             accuracy=payload.accuracy,
-            timestamp=payload.timestamp
+            timestamp=payload.timestamp,
+            is_manual=payload.is_manual or False
         )
         return {"status": "success", "data": updated}
     except Exception as e:

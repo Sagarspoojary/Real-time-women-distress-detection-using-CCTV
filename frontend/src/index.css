@@ -8,10 +8,10 @@
 :root {
   font-family: 'Outfit', sans-serif;
   color-scheme: light;
-  --bg-app: #f1f5f9;
+  --bg-app: #ffffff;
   --bg-surface: #ffffff;
-  --bg-card: rgba(255, 255, 255, 0.9);
-  --bg-input: rgba(255, 255, 255, 0.95);
+  --bg-card: #ffffff;
+  --bg-input: #ffffff;
   --border-subtle: #e2e8f0;
   --text-main: #0f172a;
   --text-sub: #475569;
@@ -64,7 +64,7 @@ body {
   width: 100%;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
-  transition: background-color 0.25s ease, color 0.25s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 #root {
@@ -79,11 +79,13 @@ body {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-subtle);
-  transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 html:not(.dark) .glass-panel {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
 }
 
 .glass-input {
@@ -93,37 +95,56 @@ html:not(.dark) .glass-panel {
   transition: all 0.2s ease-in-out;
 }
 
+html:not(.dark) .glass-input {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
 .glass-input:focus {
   border-color: rgba(6, 182, 212, 0.8);
   box-shadow: 0 0 15px rgba(6, 182, 212, 0.15);
   outline: none;
 }
 
-.glow-cyan {
+/* Glow effects: active in dark mode, clean flat accents in light mode */
+html.dark .glow-cyan {
   text-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
 }
 
-.glow-purple {
+html.dark .glow-purple {
   text-shadow: 0 0 10px rgba(124, 58, 237, 0.5);
 }
 
+html:not(.dark) .glow-cyan {
+  text-shadow: none;
+  color: #0284c7;
+}
+
+html:not(.dark) .glow-purple {
+  text-shadow: none;
+  color: #6d28d9;
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
-   Light Theme System Overrides for Hardcoded Dark Palette Classes
+   Proper Clean Light Theme System Overrides for Components
    ───────────────────────────────────────────────────────────────────────────── */
 html:not(.dark) {
   --tw-shadow-color: rgba(0, 0, 0, 0.05);
 }
 
+/* Normal pure white surfaces */
 html:not(.dark) .bg-\[\#030712\] {
-  background-color: #f8fafc !important;
+  background-color: #ffffff !important;
 }
 
 html:not(.dark) .bg-slate-950 {
   background-color: #ffffff !important;
 }
 
+/* Subtle clean card / icon backgrounds */
 html:not(.dark) .bg-slate-900 {
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
 }
 
 html:not(.dark) .bg-slate-900\/60,
@@ -137,9 +158,16 @@ html:not(.dark) .bg-slate-950\/40,
 html:not(.dark) .bg-slate-950\/50,
 html:not(.dark) .bg-slate-950\/60,
 html:not(.dark) .bg-slate-950\/80 {
-  background-color: rgba(241, 245, 249, 0.85) !important;
+  background-color: #f8fafc !important;
 }
 
+html:not(.dark) .hover\:bg-slate-900:hover,
+html:not(.dark) .hover\:bg-slate-900\/30:hover,
+html:not(.dark) .hover\:bg-slate-950\/30:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Clean Borders */
 html:not(.dark) .border-slate-900,
 html:not(.dark) .border-slate-800 {
   border-color: #e2e8f0 !important;
@@ -147,14 +175,29 @@ html:not(.dark) .border-slate-800 {
 
 html:not(.dark) .border-slate-800\/50,
 html:not(.dark) .border-slate-800\/80,
-html:not(.dark) .border-slate-800\/85 {
-  border-color: rgba(226, 232, 240, 0.85) !important;
+html:not(.dark) .border-slate-800\/85,
+html:not(.dark) .border-slate-900\/60,
+html:not(.dark) .border-slate-900\/40 {
+  border-color: #e2e8f0 !important;
 }
 
+html:not(.dark) .divide-slate-900\/85 > * + * {
+  border-color: #e2e8f0 !important;
+}
+
+html:not(.dark) .hover\:border-slate-700:hover,
+html:not(.dark) .hover\:border-slate-800:hover {
+  border-color: #cbd5e1 !important;
+}
+
+/* High-Contrast Text Hierarchy */
 html:not(.dark) .text-slate-100,
-html:not(.dark) .text-slate-200,
-html:not(.dark) .text-white {
+html:not(.dark) .text-slate-200 {
   color: #0f172a !important;
+}
+
+html:not(.dark) .text-slate-300 {
+  color: #1e293b !important;
 }
 
 html:not(.dark) .text-slate-400 {
@@ -165,14 +208,117 @@ html:not(.dark) .text-slate-500 {
   color: #64748b !important;
 }
 
-/* Maintain Status Indicators & Accents */
-html:not(.dark) .text-cyan-400,
-html:not(.dark) .text-emerald-400,
-html:not(.dark) .text-amber-400,
+html:not(.dark) .text-slate-600 {
+  color: #475569 !important;
+}
+
+/* Text White Handling:
+   Only convert text-white to dark text on headings, paragraphs, and unstyled containers.
+   Buttons, badges, and gradient fills ALWAYS KEEP PURE WHITE TEXT! */
+html:not(.dark) h1.text-white,
+html:not(.dark) h2.text-white,
+html:not(.dark) h3.text-white,
+html:not(.dark) h4.text-white,
+html:not(.dark) h5.text-white,
+html:not(.dark) p.text-white,
+html:not(.dark) span.text-white:not([class*="bg-"]):not([class*="badge"]),
+html:not(.dark) div.text-white:not([class*="bg-"]):not([class*="badge"]),
+html:not(.dark) td.text-white,
+html:not(.dark) th.text-white {
+  color: #0f172a !important;
+}
+
+/* Preserve crisp white text on colored buttons, badges, and gradients */
+html:not(.dark) button.text-white,
+html:not(.dark) a.text-white,
+html:not(.dark) [class*="bg-gradient-"],
+html:not(.dark) [class*="bg-gradient-"] *,
+html:not(.dark) [class*="bg-cyan-600"],
+html:not(.dark) [class*="bg-cyan-600"] *,
+html:not(.dark) [class*="bg-indigo-600"],
+html:not(.dark) [class*="bg-indigo-600"] *,
+html:not(.dark) [class*="bg-red-500"],
+html:not(.dark) [class*="bg-red-500"] *,
+html:not(.dark) [class*="bg-red-600"],
+html:not(.dark) [class*="bg-red-600"] *,
+html:not(.dark) [class*="bg-emerald-600"],
+html:not(.dark) [class*="bg-emerald-600"] * {
+  color: #ffffff !important;
+}
+
+/* Maintain Status Indicators & Proper Contrast in Light Mode */
+html:not(.dark) .text-cyan-400 {
+  color: #0284c7 !important;
+}
+
+html:not(.dark) .text-emerald-400 {
+  color: #059669 !important;
+}
+
+html:not(.dark) .text-amber-400 {
+  color: #d97706 !important;
+}
+
 html:not(.dark) .text-red-400,
-html:not(.dark) .text-red-300,
-html:not(.dark) .text-indigo-400,
-html:not(.dark) .text-rose-400,
+html:not(.dark) .text-red-300 {
+  color: #dc2626 !important;
+}
+
+html:not(.dark) .text-indigo-400 {
+  color: #4f46e5 !important;
+}
+
 html:not(.dark) .text-violet-400 {
-  color: revert !important;
+  color: #7c3aed !important;
+}
+
+html:not(.dark) .text-rose-400 {
+  color: #e11d48 !important;
+}
+
+/* Modern Clean Alert Badges & Status Pills in Light Mode */
+html:not(.dark) .bg-cyan-950\/20,
+html:not(.dark) .bg-cyan-950\/40 {
+  background-color: #ecfeff !important;
+  border-color: #a5f3fc !important;
+}
+
+html:not(.dark) .bg-red-950\/20,
+html:not(.dark) .bg-red-950\/30,
+html:not(.dark) .bg-red-950\/40 {
+  background-color: #fef2f2 !important;
+  border-color: #fecaca !important;
+}
+
+html:not(.dark) .bg-emerald-950\/20,
+html:not(.dark) .bg-emerald-950\/30,
+html:not(.dark) .bg-emerald-950\/40 {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html:not(.dark) .bg-amber-950\/20,
+html:not(.dark) .bg-amber-950\/30,
+html:not(.dark) .bg-amber-950\/40 {
+  background-color: #fffbeb !important;
+  border-color: #fde68a !important;
+}
+
+html:not(.dark) .bg-indigo-950\/20,
+html:not(.dark) .bg-indigo-950\/30,
+html:not(.dark) .bg-indigo-950\/40 {
+  background-color: #eef2ff !important;
+  border-color: #c7d2fe !important;
+}
+
+/* Form Controls in Light Mode */
+html:not(.dark) select {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html:not(.dark) select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
 }

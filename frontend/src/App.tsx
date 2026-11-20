@@ -36,11 +36,7 @@ const Profile = lazy(() => import('./pages/dashboard/Profile'))
 const HelpSupport = lazy(() => import('./pages/dashboard/HelpSupport'))
 const OutputsVault = lazy(() => import('./pages/dashboard/OutputsVault'))
 
-import { useLocation } from './hooks/useLocation'
-
 function App() {
-  useLocation();
-
   return (
     <ThemeProvider>
       <LocationProvider>

@@ -28,7 +28,7 @@ const DashboardLayout: React.FC = () => {
   const mainMargin = sidebarExpanded ? "lg:pl-64" : "lg:pl-16";
 
   return (
-    <div className="min-h-screen bg-slate-100/70 dark:bg-[#030712] text-slate-800 dark:text-slate-100 flex flex-col transition-colors duration-200">
+    <div className="min-h-screen bg-white dark:bg-[#030712] text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-200">
       {/* Sidebar navigation */}
       <Sidebar />
 
@@ -55,7 +55,7 @@ const DashboardLayout: React.FC = () => {
         </main>
 
         {/* Footer */}
-        <footer className="w-full border-t border-slate-200 dark:border-slate-900 bg-white/80 dark:bg-[#030712] py-4 px-6 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 font-semibold select-none max-w-7xl mx-auto transition-colors duration-200 gap-2">
+        <footer className="w-full border-t border-slate-200 dark:border-slate-900 bg-white dark:bg-[#030712] py-4 px-6 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 font-semibold select-none max-w-7xl mx-auto transition-colors duration-200 gap-2">
           <span>&copy; {new Date().getFullYear()} AegisSafe AI Technologies Pvt. Ltd. All rights reserved.</span>
           <div className="flex flex-wrap items-center gap-3">
             <a href="/privacy" className="hover:text-cyan-500 transition-colors">Privacy (DPDP Act)</a>

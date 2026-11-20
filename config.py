@@ -1,5 +1,10 @@
 import os
 import torch
+try:
+    from dotenv import load_dotenv
+    load_dotenv(override=False)
+except ImportError:
+    pass
 
 # Configuration file for Women Distress Detection AI
 

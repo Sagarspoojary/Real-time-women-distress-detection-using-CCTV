@@ -41,6 +41,7 @@ import {
   FiMoon
 } from "react-icons/fi";
 import CameraSettingsCard from "../../components/settings/CameraSettingsCard";
+import { CameraLocationCard } from "../../components/settings/CameraLocationCard";
 import { useTheme } from "../../contexts/ThemeContext";
 
 const Settings: React.FC = () => {
@@ -477,6 +478,7 @@ const Settings: React.FC = () => {
                 </h2>
               </div>
               <CameraSettingsCard standalone={false} />
+              <CameraLocationCard />
             </div>
           )}
 

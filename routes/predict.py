@@ -128,13 +128,35 @@ async def predict(
             f"Persons Detected: {m3.get('people_detected', 0)}"
         )
 
-        # 4. Attach location data if available
+        # 4. Attach location data: Prioritize Authoritative CCTV coordinates from LocationService
         t_threat_start = time.perf_counter()
+        from services.location_service import LocationService
+        loc_svc = LocationService()
+        current_loc = loc_svc.get_location()
+
+        # If static CCTV or manual coordinates are configured, they are authoritative
+        if current_loc.get("source") in ("configured_cctv", "manual"):
+            lat_final = current_loc.get("latitude")
+            lon_final = current_loc.get("longitude")
+            acc_final = current_loc.get("accuracy")
+            src_final = current_loc.get("source")
+        elif latitude is not None and longitude is not None:
+            lat_final = latitude
+            lon_final = longitude
+            acc_final = accuracy
+            src_final = "client_upload"
+        else:
+            lat_final = current_loc.get("latitude")
+            lon_final = current_loc.get("longitude")
+            acc_final = current_loc.get("accuracy")
+            src_final = current_loc.get("source")
+
         gps_data = {
-            "latitude": latitude,
-            "longitude": longitude,
-            "accuracy": accuracy,
+            "latitude": lat_final,
+            "longitude": lon_final,
+            "accuracy": acc_final,
             "timestamp": timestamp,
+            "source": src_final,
         }
         result["location"] = gps_data
         t_threat_ms = (time.perf_counter() - t_threat_start) * 1000.0

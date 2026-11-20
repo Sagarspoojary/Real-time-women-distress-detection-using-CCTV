@@ -21,6 +21,11 @@ import queue
 import threading
 from datetime import datetime, timezone
 import cv2
+try:
+    from dotenv import load_dotenv
+    load_dotenv(override=False)
+except ImportError:
+    pass
 
 from services.email_service import EmailService
 from services.emergency_contact_service import EmergencyContactService
@@ -337,6 +342,27 @@ class AlertDispatcher:
             f"ID={incident_id} | Threat: {threat_type} ({confidence:.1f}%) | Risk: {risk_level} | Source: {source_key}"
         )
 
+        # Resolve effective location:
+        # If location_data is coarse browser IP or omitted, prefer authoritative CCTV coordinates (.env / manual)
+        is_approx = (
+            location_data is not None
+            and (
+                location_data.get("source") == "browser_ip_approx"
+                or (location_data.get("accuracy") is not None and location_data.get("accuracy") >= 500)
+            )
+        )
+        if is_approx or location_data is None or location_data == {}:
+            from services.location_service import LocationService
+            auth_loc = LocationService().get_location()
+            if auth_loc.get("source") in ("configured_cctv", "manual"):
+                effective_location = auth_loc
+            elif location_data is not None and not is_approx:
+                effective_location = location_data
+            else:
+                effective_location = auth_loc
+        else:
+            effective_location = location_data
+
         job = {
             "incident_id": incident_id,
             "source_key": source_key,
@@ -350,7 +376,7 @@ class AlertDispatcher:
             "persons": persons,
             "video_path": video_path,
             "snapshot_path": snapshot_path,
-            "location_data": location_data or {},
+            "location_data": effective_location,
             "t_confirmed": t_confirmed,
         }
         
@@ -367,7 +393,7 @@ class AlertDispatcher:
                     pipeline_result=pipeline_result,
                     video_path=video_path,
                     snapshot_path=snapshot_path,
-                    location_data=location_data,
+                    location_data=effective_location,
                     alert_status="ENQUEUED"
                 )
                 t_persisted = time.time()
@@ -466,9 +492,10 @@ class AlertDispatcher:
                 f"[AlertDispatcher] [{incident_id}] Email dispatch started at "
                 f"{datetime.fromtimestamp(t_email_start_wall, tz=timezone.utc).isoformat()} to {len(email_recipients)} recipient(s)"
             )
+            camera_name_str = location_data.get("camera_name") or os.environ.get("ALERT_CAMERA_LOCATION") or os.environ.get("SAFETY_LOCATION_NAME") or ALERT_CAMERA_LOCATION
             html_body = _build_html_email(
                 incident_id=incident_id, timestamp=timestamp, camera_id=ALERT_CAMERA_ID,
-                camera_location=ALERT_CAMERA_LOCATION, threat_type=threat_type, confidence=confidence,
+                camera_location=camera_name_str, threat_type=threat_type, confidence=confidence,
                 person_count=person_count, gender_summary=gender_summary, risk_level=risk_level,
                 gps_location=ALERT_GPS_LOCATION, ai_summary=ai_summary, video_name=video_name,
                 latitude=location_data.get("latitude"), longitude=location_data.get("longitude"),
@@ -523,11 +550,12 @@ class AlertDispatcher:
             else:
                 gps_str = ALERT_GPS_LOCATION
 
+            camera_name_str = location_data.get("camera_name") or os.environ.get("ALERT_CAMERA_LOCATION") or os.environ.get("SAFETY_LOCATION_NAME") or ALERT_CAMERA_LOCATION
             sms_text = (
                 f"EMERGENCY ALERT: {threat_type} Detected\n"
                 f"Risk Level: {risk_level}\n"
                 f"Confidence: {confidence:.0f}%\n"
-                f"Camera: {ALERT_CAMERA_LOCATION} ({ALERT_CAMERA_ID})\n"
+                f"Camera: {camera_name_str} ({ALERT_CAMERA_ID})\n"
                 f"Time: {timestamp}\n\n"
                 f"AI Summary: {ai_summary}\n\n"
                 f"Persons Detected: {person_count}\n"

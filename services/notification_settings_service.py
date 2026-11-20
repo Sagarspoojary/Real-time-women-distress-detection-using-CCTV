@@ -4,6 +4,11 @@ import json
 import logging
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
+try:
+    from dotenv import load_dotenv
+    load_dotenv(override=False)
+except ImportError:
+    pass
 
 from database.database import SessionLocal, engine, Base
 from database.models import NotificationSetting

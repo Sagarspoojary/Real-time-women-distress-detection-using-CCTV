@@ -33,10 +33,13 @@ export const uploadAndAnalyzeVideo = async (
 ) => {
   const formData = new FormData();
   formData.append("file", file);
-  if (locationData?.latitude != null) formData.append("latitude", String(locationData.latitude));
-  if (locationData?.longitude != null) formData.append("longitude", String(locationData.longitude));
-  if (locationData?.accuracy != null) formData.append("accuracy", String(locationData.accuracy));
-  if (locationData?.timestamp != null) formData.append("timestamp", String(locationData.timestamp));
+  // Only send coordinates if they are authoritative (configured CCTV or manual)
+  if (locationData?.latitude != null && (locationData as any)?.source !== "browser_ip_approx") {
+    formData.append("latitude", String(locationData.latitude));
+    formData.append("longitude", String(locationData.longitude));
+    if (locationData?.accuracy != null) formData.append("accuracy", String(locationData.accuracy));
+    if (locationData?.timestamp != null) formData.append("timestamp", String(locationData.timestamp));
+  }
 
   const correlationId = "manual-" + Math.random().toString(36).substring(2, 10);
   const response = await api.post("/predict", formData, {

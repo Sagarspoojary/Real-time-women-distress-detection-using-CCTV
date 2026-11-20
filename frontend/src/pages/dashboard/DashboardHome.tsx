@@ -245,16 +245,27 @@ const DashboardHome: React.FC = () => {
         </div>
 
         {/* GPS Location Status Card */}
-        <div className="glass-panel p-4 rounded-xl border border-slate-900 flex items-center justify-between col-span-1 md:col-span-2 lg:col-span-4">
+        <div className="glass-panel p-4 rounded-xl border border-slate-900 flex flex-col md:flex-row md:items-center justify-between gap-3 col-span-1 md:col-span-2 lg:col-span-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-slate-900 border border-slate-800 text-cyan-400 rounded-xl">
               <FiMapPin className="text-cyan-400" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Current Camera GPS Location</span>
-              <div className="flex items-center gap-3 mt-1 text-xs font-semibold">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Current Camera GPS Location</span>
+                {location.source === "configured_cctv" ? (
+                  <span className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    Authoritative CCTV GPS
+                  </span>
+                ) : location.isApproximate ? (
+                  <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider" title="Laptops without GPS hardware estimate location via ISP/network IP routing. Set exact CCTV coordinates in .env for pinpoint accuracy.">
+                    ⚠️ Low Accuracy (~{Math.round((location.accuracy || 5000) / 1000)}km IP Estimate)
+                  </span>
+                ) : null}
+              </div>
+              <div className="flex flex-wrap items-center gap-3 mt-1 text-xs font-semibold">
                 <span className="text-slate-300">
-                  <strong className="text-slate-500">Camera:</strong> CAM-01 (Main Entrance)
+                  <strong className="text-slate-500">Camera:</strong> {location.cameraName || "CAM-01 (Main Entrance)"}
                 </span>
                 <span className="text-slate-500">|</span>
                 <span className="text-slate-300">
@@ -266,6 +277,20 @@ const DashboardHome: React.FC = () => {
                 <span className="text-slate-300">
                   <strong className="text-slate-500">Accuracy:</strong> {location.accuracy != null ? `±${Math.round(location.accuracy)}m` : "N/A"}
                 </span>
+                {location.latitude != null && location.longitude != null && (
+                  <>
+                    <span className="text-slate-500">|</span>
+                    <a
+                      href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 underline font-bold flex items-center gap-1 text-[11px]"
+                      title="Open in Google Maps"
+                    >
+                      📍 Open Maps
+                    </a>
+                  </>
+                )}
                 <span className="text-slate-500">|</span>
                 <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
                   location.permissionStatus === "granted" 
@@ -274,7 +299,7 @@ const DashboardHome: React.FC = () => {
                     ? "bg-red-500/10 text-red-400 border border-red-500/20"
                     : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
                 }`}>
-                  Permission: {location.permissionStatus}
+                  {location.source === "configured_cctv" ? "Source: .env Static" : `Permission: ${location.permissionStatus}`}
                 </span>
               </div>
             </div>

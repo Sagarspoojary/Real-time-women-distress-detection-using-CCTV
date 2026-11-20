@@ -1,6 +1,11 @@
 import os
 import logging
 from typing import Optional, Dict, Any
+try:
+    from dotenv import load_dotenv
+    load_dotenv(override=False)
+except ImportError:
+    pass
 
 logger = logging.getLogger("location_provider")
 
@@ -12,9 +17,9 @@ class LocationProvider:
     
     def __init__(self):
         # Read from environment variables, fallback to None
-        self._lat_str = os.environ.get("SAFETY_LOCATION_LAT")
-        self._lon_str = os.environ.get("SAFETY_LOCATION_LON")
-        self._name_str = os.environ.get("SAFETY_LOCATION_NAME")
+        self._lat_str = os.environ.get("SAFETY_LOCATION_LAT") or os.environ.get("ALERT_CAMERA_LAT") or os.environ.get("CAMERA_LATITUDE")
+        self._lon_str = os.environ.get("SAFETY_LOCATION_LON") or os.environ.get("ALERT_CAMERA_LON") or os.environ.get("CAMERA_LONGITUDE")
+        self._name_str = os.environ.get("SAFETY_LOCATION_NAME") or os.environ.get("ALERT_CAMERA_LOCATION")
         
         self.latitude: Optional[float] = None
         self.longitude: Optional[float] = None

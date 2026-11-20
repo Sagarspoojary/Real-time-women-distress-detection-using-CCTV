@@ -3,6 +3,11 @@ import time
 import logging
 import requests
 from typing import Dict, Any, List, Optional
+try:
+    from dotenv import load_dotenv
+    load_dotenv(override=False)
+except ImportError:
+    pass
 from services.phone_notification_service import mask_phone_number
 
 logger = logging.getLogger("sms_service")
